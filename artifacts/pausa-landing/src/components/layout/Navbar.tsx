@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { GlowButton } from "@/components/ui/GlowButton";
-import { Activity } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function Navbar() {
@@ -29,13 +28,14 @@ export function Navbar() {
       )}
     >
       <div className="max-w-7xl mx-auto px-6 lg:px-8 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2 group outline-none">
-          <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary group-hover:bg-primary/20 transition-colors">
-            <Activity className="h-6 w-6" />
-            <div className="absolute inset-0 rounded-xl ring-1 ring-inset ring-primary/20 group-hover:ring-primary/40 transition-colors" />
-          </div>
+        <Link href="/" className="flex items-center gap-3 group outline-none">
+          <img
+            src="/pausa-logo.png"
+            alt="Pausa logo"
+            className="h-10 w-10 object-contain rounded-lg"
+          />
           <span className="font-display font-bold text-2xl tracking-tight text-foreground">
-            pausa<span className="text-primary">.money</span>
+            Pausa
           </span>
         </Link>
 
