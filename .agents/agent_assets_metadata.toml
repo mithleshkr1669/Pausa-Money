@@ -6,3 +6,9 @@ id = "NzmcAM_qwscumXvlGNPwu"
 uri = "file://pausa-landing.tar.gz"
 type = "unspecified"
 title = "Pausa Landing Page — Source Code"
+
+[[outputs]]
+id = "ZzvsII3vLfuNJW1FD7zMs"
+uri = "file://pausa-landing.zip"
+type = "unspecified"
+title = "Pausa Landing Page — Source Code (.zip)"
