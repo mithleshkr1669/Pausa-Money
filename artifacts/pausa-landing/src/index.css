@@ -1,0 +1,92 @@
+@import url('https://api.fontshare.com/v2/css?f[]=satoshi@700,500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: 'Inter', sans-serif;
+  --font-display: 'Satoshi', sans-serif;
+
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-border: hsl(var(--border));
+  --color-ring: hsl(var(--ring));
+}
+
+:root {
+  /* Pausa Brand Palette mapped to HSL */
+  /* Obsidian Night: #0B0D10 */
+  --background: 216 18% 5%;
+  /* Cloud Dancer: #F0EEE9 */
+  --foreground: 43 17% 93%;
+  
+  /* Electric Teal: #40E0FF */
+  --primary: 190 100% 63%;
+  --primary-foreground: 216 18% 5%;
+  
+  /* Plasma Mint: #00F5D4 */
+  --secondary: 172 100% 48%;
+  --secondary-foreground: 216 18% 5%;
+  
+  /* Dark 900 / 800 / 700 surfaces */
+  --card: 0 0% 10%; /* #1A1A1A */
+  --card-foreground: 43 17% 93%;
+  
+  /* Slate UI: #7C7C7C */
+  --muted: 0 0% 15%;
+  --muted-foreground: 0 0% 49%;
+  
+  --accent: 190 100% 63%;
+  --accent-foreground: 216 18% 5%;
+  
+  --border: 0 0% 16%; /* #2A2A2A */
+  --ring: 190 100% 63%;
+}
+
+@layer base {
+  body {
+    @apply bg-background text-foreground antialiased font-sans selection:bg-primary/30 selection:text-primary;
+    /* Force dark mode behavior globally since this is a dark-themed brand */
+    color-scheme: dark;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    @apply font-bold tracking-tight text-foreground;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary via-secondary to-primary;
+  }
+  
+  .glass-panel {
+    @apply bg-card/40 backdrop-blur-xl border border-white/5 shadow-2xl;
+  }
+  
+  .glow-border {
+    position: relative;
+  }
+  .glow-border::before {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(to bottom right, hsl(var(--primary) / 0.5), transparent, hsl(var(--secondary) / 0.2));
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+}

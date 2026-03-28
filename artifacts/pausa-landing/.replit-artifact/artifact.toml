@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "Pausa Landing Page"
+version = "1.0.0"
+id = "artifacts/pausa-landing"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 25325
+
+[services.development]
+run = "pnpm --filter @workspace/pausa-landing run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/pausa-landing", "run", "build" ]
+publicDir = "artifacts/pausa-landing/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "25325"
+BASE_PATH = "/"

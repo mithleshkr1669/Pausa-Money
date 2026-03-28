@@ -1,3 +1,43 @@
+# Pausa Landing Page — pausa.money
+
+## Overview
+
+Pausa is a fintech app that transforms raw financial transaction data into "Financial Vitality." This workspace contains the landing page for pausa.money.
+
+## Artifacts
+
+- **pausa-landing** (`artifacts/pausa-landing/`) — React + Vite landing page at `/`
+- **api-server** (`artifacts/api-server/`) — Express API server at `/api`
+
+## Pausa Landing Page
+
+Full dark-mode fintech landing page built with React, Vite, TanStack Query, and Framer Motion.
+
+### Sections
+1. **Navbar** — pausa.money branding + Download APK CTA
+2. **Hero** — Tagline, animated pulse graphic, dual CTAs
+3. **Problem** — Why banks don't give the full picture
+4. **3 Pillars** — Liquidity, Resilience, Optimization cards with glow effects
+5. **How It Works** — DistilBERT AI engine steps
+6. **Data Preview** — Animated vitality score progress bars (sample data)
+7. **Download** — Disclaimer note + APK download button with version info via TanStack Query
+8. **Footer** — branding and links
+
+### APK Configuration
+To update the APK download, edit `artifacts/pausa-landing/src/hooks/use-app-info.ts`:
+- Set `APK_DOWNLOAD_URL` to the APK file path
+- Place the APK in `artifacts/pausa-landing/public/`
+- Update `APK_VERSION` and `APK_SIZE` accordingly
+
+### Brand Colors
+- Background (Obsidian Night): #0B0D10
+- Primary Accent (Electric Teal): #40E0FF
+- Secondary Accent (Plasma Mint): #00F5D4
+- Text Primary (Cloud Dancer): #F0EEE9
+- Text Muted (Slate UI): #7C7C7C
+
+---
+
 # Workspace
 
 ## Overview

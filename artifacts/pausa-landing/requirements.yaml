@@ -1,0 +1,16 @@
+packages:
+  "framer-motion": "For premium cinematic scroll animations and complex entrance effects"
+  "clsx": "For conditional class joining"
+  "tailwind-merge": "For merging Tailwind classes efficiently"
+
+images:
+  - path: "artifacts/pausa-landing/public/images/hero-abstract.png"
+    description: "Deep obsidian background with subtle, glowing electric teal geometric nodes and data lines, futuristic financial lab aesthetic, very dark and cinematic"
+    aspect_ratio: "16:9"
+  - path: "artifacts/pausa-landing/public/images/data-mesh.png"
+    description: "Abstract 3D network mesh in plasma mint and dark teal on pitch black background, representing AI neural network analyzing transactions"
+    aspect_ratio: "16:9"
+
+notes:
+  - Mocking the APK version download info using a simple TanStack query to demonstrate the data fetching pattern
+  - Strict adherence to dark mode only (Obsidian Night #0B0D10)
