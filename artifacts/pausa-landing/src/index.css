@@ -29,12 +29,12 @@
   /* Cloud Dancer: #F0EEE9 */
   --foreground: 43 17% 93%;
   
-  /* Electric Teal: #40E0FF */
-  --primary: 190 100% 63%;
-  --primary-foreground: 216 18% 5%;
+  /* CyanBright: #00E5CC */
+  --primary: 173 100% 45%;
+  --primary-foreground: 240 9% 4%;
   
-  /* Plasma Mint: #00F5D4 */
-  --secondary: 172 100% 48%;
+  /* CyanMedium: #00B8A9 */
+  --secondary: 176 100% 36%;
   --secondary-foreground: 216 18% 5%;
   
   /* Dark 900 / 800 / 700 surfaces */
@@ -45,11 +45,11 @@
   --muted: 0 0% 15%;
   --muted-foreground: 0 0% 49%;
   
-  --accent: 190 100% 63%;
-  --accent-foreground: 216 18% 5%;
+  --accent: 173 100% 45%;
+  --accent-foreground: 240 9% 4%;
   
   --border: 0 0% 16%; /* #2A2A2A */
-  --ring: 190 100% 63%;
+  --ring: 173 100% 45%;
 }
 
 @layer base {
