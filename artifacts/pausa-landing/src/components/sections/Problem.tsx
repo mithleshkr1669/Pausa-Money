@@ -1,40 +1,40 @@
 import { motion } from "framer-motion";
-import { AlertCircle, Target, TrendingDown } from "lucide-react";
+import { Droplets, Brain, Ghost } from "lucide-react";
 
 export function Problem() {
   return (
     <section id="problem" className="py-24 bg-[#0D0D0D] border-y border-white/5 relative">
       <div className="max-w-7xl mx-auto px-6 lg:px-8">
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           className="text-center max-w-3xl mx-auto mb-16"
         >
           <h2 className="text-3xl md:text-5xl font-display font-bold mb-6">
-            Why Banks Don't Give You the <span className="text-primary">Full Picture</span>
+            Why does your bank balance <span className="text-primary">feel like a leak?</span>
           </h2>
-          <p className="text-lg text-muted-foreground">
-            Generic expense trackers label your gym membership as a "Liability" and a UPI transfer to a friend as "Income". We look deeper.
+          <p className="text-lg text-muted-foreground leading-relaxed">
+            Most apps tell you what you spent. That just causes stress. Pausa tells you <span className="text-foreground font-medium">how you feel</span> and <span className="text-foreground font-medium">what to do next.</span> We analyze the "why" behind every UPI payment to protect your future.
           </p>
         </motion.div>
 
         <div className="grid md:grid-cols-3 gap-8">
           {[
             {
-              icon: AlertCircle,
-              title: "Generic Labels Fail",
-              desc: "Standard banking apps use simplistic rules. They don't understand the nuance of Indian UPI strings and unstructured narrations."
+              icon: Droplets,
+              title: "Your Cash is Leaking",
+              desc: "Silent subscriptions, ghost spends, and unplanned UPI transfers slowly drain your balance — most people never notice until it's too late."
             },
             {
-              icon: Target,
-              title: "Missing the 'Why'",
-              desc: "Tracking what you spent doesn't tell you if you're financially healthy. It's just a rear-view mirror of your choices."
+              icon: Brain,
+              title: "Tracking ≠ Healing",
+              desc: "Knowing your expenses doesn't fix your finances. Pausa goes deeper — identifying the emotional triggers behind your spending patterns."
             },
             {
-              icon: TrendingDown,
-              title: "Stress Spending Ignored",
-              desc: "Are you spending because you have vitality, or because of stress? Traditional systems cannot differentiate."
+              icon: Ghost,
+              title: "Ghost Subscriptions Haunt You",
+              desc: "Forgotten trials, unused apps, auto-renewals. Our DistilBERT AI hunts them down and reclaims your rupees."
             }
           ].map((item, i) => (
             <motion.div
@@ -53,9 +53,7 @@ export function Problem() {
                   <item.icon className="w-6 h-6 text-muted-foreground group-hover:text-primary transition-colors" />
                 </div>
                 <h3 className="text-xl font-display font-bold mb-3">{item.title}</h3>
-                <p className="text-muted-foreground leading-relaxed">
-                  {item.desc}
-                </p>
+                <p className="text-muted-foreground leading-relaxed">{item.desc}</p>
               </div>
             </motion.div>
           ))}
