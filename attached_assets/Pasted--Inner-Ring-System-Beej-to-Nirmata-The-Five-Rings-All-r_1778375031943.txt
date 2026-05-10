@@ -1,0 +1,163 @@
+# Inner Ring System — Beej to Nirmata
+
+## The Five Rings
+
+All ring names are in Hindi — this is deliberate. It creates cultural identity no Western platform can copy.
+
+| Ring | Hindi | English | Cap | Entry Method | ring_tier value |
+|------|-------|---------|-----|-------------|-----------------|
+| 1 | Beej (बीज) | The Seed | Unlimited | Automatic on signup | 1 |
+| 2 | Saathi (साथी) | The Companion | Unlimited | Criteria met automatically | 2 |
+| 3 | Sevak (सेवक) | The Servant | 201 | Application required | 3 |
+| 4 | Sutradhaar (सूत्रधार) | Thread Holder | 51 | Founder invite only | 4 |
+| 5 | Nirmata (निर्माता) | The Creator | 11 (FOREVER) | Founder selection | 5 |
+
+**Critical:** The cap of 11 Nirmatas is permanent and sacred. Never allow more. Display the cap publicly.
+
+## Ring Progression Logic
+
+### Beej → Saathi (automatic, tracked by ring_activity)
+```typescript
+// Check on every activity event
+async function checkSaathiEligibility(userId: string) {
+  const { data } = await supabase
+    .from('ring_activity')
+    .select('activity_type, created_at')
+    .eq('user_id', userId)
+
+  const upvotesReceived = await supabase
+    .from('votes')
+    .select('count')
+    .eq('target_type', 'answer')
+    // join to answers where user_id = userId
+
+  const daysActive = daysSinceFirstActivity(data)
+  const helpfulVotes = upvotesReceived.count
+
+  if (helpfulVotes >= 30 && daysActive >= 30) {
+    await promoteToSaathi(userId)
+  }
+}
+```
+
+### Saathi → Sevak (application-based)
+Application form fields:
+- Finance background (optional — CA student, finance grad, experienced investor, other)
+- Why do you want to be a Sevak? (200 words)
+- Commit to reviewing 5 plans per week (checkbox)
+- Pass 10-question India finance quiz (score ≥ 7/10 to pass)
+
+Quiz topics: SIP, EPF vs PPF, Section 80C, term insurance, direct vs regular MF, emergency fund, CIBIL score, tax regime choice, NPS basics, ELSS lock-in.
+
+Review by 3 existing Sevaks (not just founder). Majority vote.
+
+### Sevak → Sutradhaar (invite only)
+- Founder identifies exceptional Sevaks after 6+ months
+- Specific role assigned (not generic upgrade): "I want you to lead the Bihar chapter" or "I want you to run Hindi content"
+- Offer made privately before public announcement
+- Signs simple partnership agreement (revenue share terms, conduct expectations)
+
+### Sutradhaar → Nirmata (founder selection)
+- 7 slots: earned through community leadership over 12+ months
+- 2 slots: domain experts recruited directly (CA, SEBI RIA)
+- 2 slots: founder reserves — chosen last, after seeing who community can't function without
+- Once a Nirmata, always a Nirmata (irrevocable except for serious violations)
+
+## FinCoin Economy
+
+```typescript
+// Earning rates
+const FINCOIN_RATES = {
+  answer_upvoted: 10,           // per upvote received on an answer
+  plan_reviewed_sevak: 50,      // per plan reviewed as Sevak
+  new_member_referral: 100,     // when referred member completes profile
+  welcome_new_member: 5,        // for welcoming a new Beej
+  answer_marked_verified: 200,  // when CFP verifies your community answer
+}
+
+// Redemption rates
+const FINCOIN_REDEMPTION = {
+  one_month_pro: 500,           // 500 coins = ₹199 Pro subscription
+  cfp_session_discount_10pct: 200,
+}
+```
+
+```typescript
+// FinCoin transaction
+async function awardFincoins(userId: string, amount: number, reason: string, targetId?: string) {
+  await supabase.from('fincoin_ledger').insert({ user_id: userId, amount, reason, target_id: targetId })
+  await supabase.from('profiles').update({
+    fincoin_balance: supabase.raw(`fincoin_balance + ${amount}`)
+  }).eq('id', userId)
+}
+```
+
+## Ring Badge Component
+
+```tsx
+// components/rings/RingBadge.tsx
+const RING_CONFIG = {
+  1: { name: 'Beej', hindi: 'बीज', icon: '🌱', color: '#c0a060', bg: 'rgba(192,160,96,0.12)' },
+  2: { name: 'Saathi', hindi: 'साथी', icon: '🤝', color: '#7eb8e0', bg: 'rgba(126,184,224,0.12)' },
+  3: { name: 'Sevak', hindi: 'सेवक', icon: '🛡️', color: '#9b7fe8', bg: 'rgba(155,127,232,0.12)' },
+  4: { name: 'Sutradhaar', hindi: 'सूत्रधार', icon: '🎭', color: '#e07878', bg: 'rgba(224,120,120,0.12)' },
+  5: { name: 'Nirmata', hindi: 'निर्माता', icon: '👑', color: '#e8c84a', bg: 'rgba(232,200,74,0.12)' },
+}
+
+export function RingBadge({ tier, size = 'sm' }: { tier: 1|2|3|4|5, size?: 'sm'|'md'|'lg' }) {
+  const config = RING_CONFIG[tier]
+  return (
+    <span style={{ background: config.bg, color: config.color, border: `1px solid ${config.color}40` }}
+          className={`ring-badge ring-badge-${size}`}>
+      {config.icon} {config.name}
+    </span>
+  )
+}
+```
+
+## Founding Wall (on /about page)
+
+Show all 11 Nirmata slots. Empty slots show "To be filled — X remaining." When all 11 are filled, lock and announce.
+
+```tsx
+// This is the most important trust signal on your platform
+// Every new member sees who built this community
+export function FoundingWall({ nirmatas }: { nirmatas: Profile[] }) {
+  const slots = Array(11).fill(null).map((_, i) => nirmatas[i] || null)
+  return (
+    <section>
+      <h2>निर्माता · Founding Council</h2>
+      <p>11 people. Forever. These are the founders of the FinCoach community.</p>
+      <div className="founding-grid">
+        {slots.map((n, i) => n
+          ? <NirmataCard key={i} profile={n} index={i + 1} />
+          : <EmptySlot key={i} index={i + 1} remaining={11 - nirmatas.length} />
+        )}
+      </div>
+    </section>
+  )
+}
+```
+
+## Public Promotion Announcements
+
+When someone is promoted, post publicly in the community feed:
+
+```typescript
+const PROMOTION_TEMPLATES = {
+  saathi: (name: string, city: string) =>
+    `🤝 Welcome our newest Saathi — ${name} from ${city}! They've helped ${30}+ community members over the past month. Their answers on [topic] have been especially valuable.`,
+  sevak: (name: string, specialisation: string) =>
+    `🛡️ Introducing ${name} as our newest Sevak! They specialize in ${specialisation} and will now be reviewing AI plans to ensure quality. Congratulations!`,
+  sutradhaar: (name: string, role: string) =>
+    `🎭 ${name} joins the Sutradhaar council as our ${role}. They've been an extraordinary contributor to this community. The thread is in good hands.`,
+}
+```
+
+## Anti-patterns (Never Do These)
+
+- Never auto-promote anyone to Sevak or above without human judgment
+- Never expand the Nirmata cap — not even temporarily
+- Never publicly demote anyone — handle privately
+- Never give titles to silence someone or manage a conflict
+- Never make FinCoins the only reason to contribute — identity must come first

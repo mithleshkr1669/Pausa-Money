@@ -1,0 +1,167 @@
+# Community System — Q&A Architecture
+
+## Community Prompt (RAG-enhanced first answer)
+
+Every question posted gets an AI-drafted first answer immediately. This solves the cold-start problem.
+
+```typescript
+// lib/prompts/community-answer.ts
+export function buildCommunityAnswerPrompt(question: string, similarQAs: string[]): string {
+  return `You are FinCoach's community assistant. Answer this Indian personal finance question
+with specific, actionable guidance. Use India-specific instruments (PPF, NPS, ELSS, ITR, EPF).
+
+${similarQAs.length > 0 ? `RELEVANT PAST ANSWERS FROM OUR COMMUNITY:\n${similarQAs.join('\n---\n')}` : ''}
+
+QUESTION: ${question}
+
+Rules:
+- Be specific and actionable, not generic
+- Use Indian rupee amounts and Indian instruments
+- If the question involves SEBI-regulated securities advice, answer the educational aspect only and recommend consulting a SEBI RIA
+- End with: "This is educational guidance — for personalised advice, consult a verified expert."
+- Keep answer under 300 words
+- If you don't know, say so — don't hallucinate`
+}
+```
+
+## RAG Setup (pgvector)
+
+```sql
+-- Enable pgvector
+CREATE EXTENSION IF NOT EXISTS vector;
+
+-- Embeddings table
+CREATE TABLE embeddings (
+  id        uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  post_id   uuid REFERENCES posts(id),
+  answer_id uuid REFERENCES answers(id),
+  content   text NOT NULL,
+  embedding vector(1536),     -- OpenAI ada-002 or Voyage AI
+  created_at timestamptz DEFAULT now()
+);
+
+-- Index for fast similarity search
+CREATE INDEX ON embeddings USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
+```
+
+```typescript
+// Find similar past Q&As for RAG
+async function findSimilarQAs(questionText: string, limit: number = 5): Promise<string[]> {
+  const embedding = await generateEmbedding(questionText)  // Voyage AI or OpenAI
+
+  const { data } = await supabase.rpc('match_embeddings', {
+    query_embedding: embedding,
+    match_threshold: 0.78,
+    match_count: limit
+  })
+
+  return data.map(d => `Q: ${d.question}\nA: ${d.answer}`)
+}
+```
+
+```sql
+-- Supabase RPC function for similarity search
+CREATE FUNCTION match_embeddings(
+  query_embedding vector(1536),
+  match_threshold float,
+  match_count int
+)
+RETURNS TABLE (question text, answer text, similarity float)
+LANGUAGE plpgsql AS $$
+BEGIN
+  RETURN QUERY
+  SELECT p.title, a.body, 1 - (e.embedding <=> query_embedding) AS similarity
+  FROM embeddings e
+  JOIN posts p ON p.id = e.post_id
+  JOIN answers a ON a.id = e.answer_id AND a.is_verified = true
+  WHERE 1 - (e.embedding <=> query_embedding) > match_threshold
+  ORDER BY similarity DESC
+  LIMIT match_count;
+END;
+$$;
+```
+
+## Post Tags (Standardised)
+
+Always use these exact tags — no free-form tagging:
+
+```typescript
+export const POST_TAGS = [
+  'first-job',        // First salary, just started working
+  'debt',             // Loans, credit cards, EMI
+  'investing',        // Mutual funds, stocks, SIP
+  'tax',              // ITR, 80C, tax saving
+  'insurance',        // Term, health, ULIP
+  'home',             // Home loan, buying property
+  'retirement',       // NPS, PPF, EPF, SCSS
+  'freelance',        // Self-employed, gig work, GST
+  'salary',           // Salary negotiation, CTC vs take-home
+  'emergency-fund',   // Savings, liquid funds
+  'women-finance',    // Maternity, career break, joint family
+  'nri',              // Non-resident Indians (high complexity — auto-flag)
+  'inheritance',      // Estate, succession (high complexity — auto-flag)
+] as const
+```
+
+## Moderation Rules
+
+```typescript
+// Auto-remove or flag these patterns
+const MODERATION_PATTERNS = [
+  /guaranteed.*return/i,          // "guaranteed 30% returns"
+  /double.*money/i,               // "double your money"
+  /chit.*fund/i,                  // Chit fund promotion
+  /telegram.*group.*join/i,       // Pump-and-dump telegram recruitment
+  /whatsapp.*signal.*tip/i,       // Stock tip promotion
+  /₹[\d,]+.*per.*day/i,           // "earn ₹5000 per day" scams
+]
+
+export async function moderatePost(content: string): Promise<{ allowed: boolean; reason?: string }> {
+  for (const pattern of MODERATION_PATTERNS) {
+    if (pattern.test(content)) {
+      return { allowed: false, reason: 'Content matches prohibited pattern' }
+    }
+  }
+  return { allowed: true }
+}
+```
+
+## SEO for Community Posts
+
+Community posts are server-side rendered for SEO. Each post becomes a Google-indexable page answering a common Indian finance question.
+
+```typescript
+// app/community/[slug]/page.tsx
+export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
+  const post = await getPost(params.slug)
+  return {
+    title: `${post.title} | FinCoach India`,
+    description: post.body.substring(0, 155),
+    openGraph: {
+      title: post.title,
+      description: `Community answer + AI guidance on: ${post.title}`,
+    }
+  }
+}
+```
+
+## Realtime (Supabase Realtime for live comments)
+
+```typescript
+// Live comment updates using Supabase Realtime
+useEffect(() => {
+  const channel = supabase
+    .channel(`post-${postId}`)
+    .on('postgres_changes', {
+      event: 'INSERT',
+      schema: 'public',
+      table: 'comments',
+      filter: `post_id=eq.${postId}`
+    }, (payload) => {
+      setComments(prev => [...prev, payload.new as Comment])
+    })
+    .subscribe()
+
+  return () => { supabase.removeChannel(channel) }
+}, [postId])
+```

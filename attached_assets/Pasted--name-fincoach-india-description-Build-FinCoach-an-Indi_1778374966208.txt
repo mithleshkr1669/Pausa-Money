@@ -1,0 +1,585 @@
+---
+name: fincoach-india
+description: >
+  Build FinCoach — an India-first AI financial co-pilot platform with community features.
+  Use this skill whenever the user asks to build any part of the FinCoach platform, including:
+  the AI co-pilot (financial action plan generator), community Q&A system, CFP approval/review
+  pipeline, inner ring membership system, user profiles, expert marketplace, life event playbooks,
+  scenario planner, or any database schema/API route for the platform. Also triggers for: "build
+  the fincoach feature", "write the plan generator code", "create the community system", "set up
+  the approval workflow", "build the ring system", "design the expert onboarding", "write the
+  India finance prompt", or any request to code, scaffold, or architect any piece of the FinCoach
+  product. Always use this skill before writing any FinCoach-related code — it encodes all product
+  decisions, legal constraints, India-specific logic, and architecture choices made across the
+  full product design session.
+---
+
+# FinCoach India — Platform Build Skill
+
+## What You Are Building
+
+FinCoach is an **India-first AI financial co-pilot + community platform**. Two products in one:
+
+1. **AI Co-pilot** — User describes their situation in Hindi or English → gets a personalised, numbered action plan in seconds. India-specific: PPF, NPS, ELSS, Section 80C, EPF, ITR, CIBIL.
+2. **Community Hub** — Structured Q&A with upvotes, verified expert answers, AI-drafted first responses, and a 5-tier inner ring membership system.
+
+**Target user:** Indians aged 22–38, salaried or freelance, Tier 1–3 cities. Currently asking financial questions on r/personalfinanceindia and getting contradictory opinions. They want decisions, not more content.
+
+**Core moat:** India-specificity (no US competitor understands PPF/NPS/ELSS), Hindi-first, and CFP-verified answers.
+
+---
+
+## Tech Stack (Non-Negotiable)
+
+| Layer | Choice | Reason |
+|-------|--------|--------|
+| Framework | Next.js 14 (App Router) | SSR for SEO on community posts + API routes = no separate backend |
+| Styling | Tailwind CSS + shadcn/ui | Fast, production-quality components |
+| Database | Supabase (Postgres) | Free tier: auth, storage, realtime, pgvector — all in one |
+| Auth | Supabase Auth | Google + email, Row Level Security built in |
+| AI — primary | Claude Haiku (`claude-haiku-4-5-20251001`) | ₹0.02/plan, streaming support, best for financial reasoning |
+| AI — premium | Claude Sonnet (`claude-sonnet-4-6`) | Pro tier users get Sonnet |
+| AI SDK | Vercel AI SDK | Streaming, tool calls, model switching in 5 lines |
+| Vector search | Supabase pgvector | RAG over community Q&A |
+| Hosting | Vercel | Free hobby tier, global CDN, auto-deploy |
+| Email | Resend | 3k emails/month free, React email templates |
+| Analytics | Posthog | GDPR-safe, 1M events/month free |
+| Payments | Razorpay (India) + Stripe (international) | They hold payment licences — never process money yourself |
+| Rate limiting | Upstash Redis | 10k requests/day free, prevents AI API abuse |
+
+**Never** introduce a different stack without flagging it. Every tool above has a free tier that covers 0–1,000 users.
+
+---
+
+## Project Structure
+
+```
+fincoach/
+├── app/
+│   ├── (auth)/
+│   │   ├── login/page.tsx
+│   │   └── signup/page.tsx
+│   ├── (main)/
+│   │   ├── page.tsx                    # Landing + AI intake form
+│   │   ├── plan/page.tsx               # Streamed AI action plan output
+│   │   ├── plan/[id]/page.tsx          # Saved plan (auth required)
+│   │   ├── community/page.tsx          # Posts feed (SSR for SEO)
+│   │   ├── community/[slug]/page.tsx   # Single post + comments
+│   │   ├── dashboard/page.tsx          # User saved plans + progress
+│   │   ├── profile/page.tsx            # Settings + ring status
+│   │   └── experts/page.tsx            # CFP/RIA marketplace
+│   └── api/
+│       ├── plan/route.ts               # AI plan generation (streaming)
+│       ├── plan/confidence/route.ts    # Confidence scoring
+│       ├── plan/route-tier/route.ts    # Approval routing
+│       ├── community/posts/route.ts    # CRUD posts
+│       ├── community/answers/route.ts  # CRUD answers + AI draft
+│       ├── reviews/route.ts            # CFP review submission
+│       └── webhooks/razorpay/route.ts  # Payment events
+├── components/
+│   ├── plan/
+│   │   ├── IntakeForm.tsx
+│   │   ├── ActionPlan.tsx
+│   │   └── ActionItem.tsx
+│   ├── community/
+│   │   ├── PostCard.tsx
+│   │   ├── AnswerBlock.tsx
+│   │   └── Editor.tsx                  # Tiptap
+│   ├── rings/
+│   │   └── RingBadge.tsx
+│   └── shared/
+│       ├── Disclaimer.tsx              # SEBI disclaimer — mandatory
+│       └── HindiToggle.tsx
+├── lib/
+│   ├── prompts/
+│   │   ├── india-finance.ts            # Master system prompt
+│   │   ├── confidence-scorer.ts        # Second AI call prompt
+│   │   └── community-answer.ts         # RAG answer draft prompt
+│   ├── supabase/
+│   │   ├── client.ts
+│   │   ├── server.ts
+│   │   └── middleware.ts
+│   └── utils/
+│       ├── routing.ts                  # Tier routing logic
+│       └── fincoins.ts                 # Credit system
+└── supabase/
+    └── migrations/
+        └── 001_initial.sql             # Full schema
+```
+
+---
+
+## Database Schema
+
+Always use this schema. Do not invent new tables without checking here first.
+
+```sql
+-- USERS (extends Supabase auth.users)
+CREATE TABLE profiles (
+  id            uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  username      text UNIQUE,
+  display_name  text,
+  avatar_url    text,
+  ring_tier     int DEFAULT 1,           -- 1=Beej 2=Saathi 3=Sevak 4=Sutradhaar 5=Nirmata
+  ring_name     text DEFAULT 'Beej',
+  fincoin_balance int DEFAULT 0,
+  plan_tier     text DEFAULT 'free',     -- free | pro
+  employment    text,                    -- salaried | freelance | business | govt | student
+  city_tier     text,                    -- metro | tier2 | tier3
+  language_pref text DEFAULT 'en',       -- en | hi
+  income_range  text,                    -- stored as range, never exact number
+  created_at    timestamptz DEFAULT now(),
+  updated_at    timestamptz DEFAULT now()
+);
+
+-- PLANS (AI-generated financial plans)
+CREATE TABLE plans (
+  id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id         uuid REFERENCES profiles(id),
+  situation_text  text NOT NULL,
+  ai_plan         jsonb NOT NULL,         -- structured plan JSON
+  confidence      int NOT NULL,           -- 0-100
+  tier            int NOT NULL,           -- 1=auto 2=community 3=cfp 4=senior 5=consult
+  flags           text[],                 -- flagged issues from confidence scorer
+  status          text DEFAULT 'pending', -- pending|approved|modified|escalated|consultation_required
+  routing         text NOT NULL,          -- auto_approve|community_queue|cfp_queue|senior_cfp|paid_consultation
+  is_public       bool DEFAULT false,
+  share_slug      text UNIQUE,            -- for public share links
+  language        text DEFAULT 'en',
+  created_at      timestamptz DEFAULT now()
+);
+
+-- PLAN REVIEWS (CFP + community validator reviews)
+CREATE TABLE plan_reviews (
+  id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  plan_id         uuid REFERENCES plans(id),
+  reviewer_id     uuid REFERENCES profiles(id),
+  reviewer_type   text,     -- community_validator | cfp | senior_cfp
+  action          text,     -- approved | modified | escalated
+  original_plan   jsonb,
+  modified_plan   jsonb,    -- null if approved without changes
+  edit_tags       text[],   -- [wrong_instrument, tax_error, better_alternative, outdated_rate]
+  review_time_s   int,      -- seconds taken
+  pay_amount_paise int,     -- in paise (1 rupee = 100 paise)
+  created_at      timestamptz DEFAULT now()
+);
+
+-- POSTS (community Q&A)
+CREATE TABLE posts (
+  id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id       uuid REFERENCES profiles(id),
+  title         text NOT NULL,
+  body          text NOT NULL,           -- rich text (Tiptap JSON stored as text)
+  tags          text[],                  -- debt | investing | tax | insurance | salary | home | freelance
+  upvotes       int DEFAULT 0,
+  view_count    int DEFAULT 0,
+  is_answered   bool DEFAULT false,
+  language      text DEFAULT 'en',       -- en | hi
+  slug          text UNIQUE,
+  created_at    timestamptz DEFAULT now()
+);
+
+-- ANSWERS
+CREATE TABLE answers (
+  id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  post_id       uuid REFERENCES posts(id),
+  user_id       uuid REFERENCES profiles(id),
+  body          text NOT NULL,
+  upvotes       int DEFAULT 0,
+  is_ai         bool DEFAULT false,      -- AI-drafted first answer
+  is_verified   bool DEFAULT false,      -- verified by CFP/SEBI RIA
+  verifier_id   uuid REFERENCES profiles(id),
+  verifier_type text,                    -- cfp | sebi_ria | ca
+  created_at    timestamptz DEFAULT now()
+);
+
+-- COMMENTS
+CREATE TABLE comments (
+  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  answer_id   uuid REFERENCES answers(id),
+  user_id     uuid REFERENCES profiles(id),
+  body        text NOT NULL,
+  created_at  timestamptz DEFAULT now()
+);
+
+-- VOTES (upvote tracking — one per user per item)
+CREATE TABLE votes (
+  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id     uuid REFERENCES profiles(id),
+  target_id   uuid NOT NULL,
+  target_type text NOT NULL,   -- post | answer
+  created_at  timestamptz DEFAULT now(),
+  UNIQUE(user_id, target_id, target_type)
+);
+
+-- EXPERTS (verified CFPs, SEBI RIAs, CAs)
+CREATE TABLE experts (
+  id                uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id           uuid REFERENCES profiles(id),
+  credential_type   text NOT NULL,   -- cfp | sebi_ria | ca | irdai
+  registration_num  text NOT NULL,
+  verified          bool DEFAULT false,
+  verified_at       timestamptz,
+  specialisations   text[],
+  session_price_paise int,           -- in paise
+  bio               text,
+  languages         text[],
+  city              text,
+  is_active         bool DEFAULT true,
+  created_at        timestamptz DEFAULT now()
+);
+
+-- RING PROGRESSION (activity tracking for ring upgrades)
+CREATE TABLE ring_activity (
+  id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id         uuid REFERENCES profiles(id),
+  activity_type   text NOT NULL,   -- post | answer | helpful_vote | review | referral | welcome
+  target_id       uuid,
+  points          int DEFAULT 0,
+  created_at      timestamptz DEFAULT now()
+);
+
+-- TRAINING DATA (for future fine-tuning)
+CREATE TABLE training_data (
+  id                uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  plan_id           uuid REFERENCES plans(id),
+  input_situation   text NOT NULL,
+  ai_output         jsonb NOT NULL,
+  expert_output     jsonb,            -- CFP's modified version
+  quality_score     int,              -- 1-5
+  consented         bool DEFAULT false,
+  created_at        timestamptz DEFAULT now()
+);
+
+-- FINCOIN LEDGER
+CREATE TABLE fincoin_ledger (
+  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id     uuid REFERENCES profiles(id),
+  amount      int NOT NULL,           -- positive = credit, negative = debit
+  reason      text NOT NULL,          -- helpful_answer | plan_review | referral | pro_redemption
+  target_id   uuid,
+  created_at  timestamptz DEFAULT now()
+);
+
+-- RLS: Enable on all tables
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE plans ENABLE ROW LEVEL SECURITY;
+ALTER TABLE posts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE answers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE comments ENABLE ROW LEVEL SECURITY;
+
+-- Key RLS policies (add more as needed)
+CREATE POLICY "Users can read own profile" ON profiles FOR SELECT USING (auth.uid() = id);
+CREATE POLICY "Users can update own profile" ON profiles FOR UPDATE USING (auth.uid() = id);
+CREATE POLICY "Users can read own plans" ON plans FOR SELECT USING (auth.uid() = user_id OR is_public = true);
+CREATE POLICY "Anyone can read posts" ON posts FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Users can create posts" ON posts FOR INSERT WITH CHECK (auth.uid() = user_id);
+```
+
+---
+
+## AI Prompts
+
+### Master India Finance System Prompt
+
+This is the exact system prompt for the AI co-pilot. Always use this — do not simplify or shorten it.
+
+```typescript
+// lib/prompts/india-finance.ts
+export const INDIA_FINANCE_SYSTEM_PROMPT = `You are FinCoach, an expert AI financial co-pilot built specifically for India. You have deep knowledge of:
+
+INDIAN TAX SYSTEM:
+- Section 80C (₹1.5L limit): ELSS, PPF, EPF, NSC, tax-saving FD, life insurance premium, home loan principal
+- Section 80D: Health insurance (₹25k self+family, ₹50k for senior citizen parents)
+- Section 80CCD(1B): Additional ₹50k NPS deduction over 80C limit
+- Old vs new tax regime: Break-even analysis, which is better at each income bracket
+- ITR forms: ITR-1 (salaried), ITR-2 (capital gains), ITR-3 (business/freelance)
+- Advance tax: Who pays, when (15 June, 15 Sept, 15 Dec, 15 Mar), how much
+- LTCG: Equity >₹1L gains taxed at 10%, Debt at income slab rate (post 2023 budget)
+
+INDIAN INVESTMENT INSTRUMENTS:
+- PPF: 15-year lock-in, ₹1.5L/year max, currently 7.1% p.a., tax-free maturity, partial withdrawal rules
+- NPS: Tier 1 (pension, 60% annuity at retirement) vs Tier 2 (flexible withdrawal), equity allocation by age, eNPS registration
+- ELSS: 3-year lock-in, equity mutual fund with 80C benefit, recommend only direct plans
+- EPF: Employee 12% + Employer 12%, VPF option, EPFO withdrawal rules, UAN
+- Sukanya Samriddhi Yojana: For girl child, 8.2% current rate, 21-year maturity
+- Senior Citizens Savings Scheme (SCSS): 8.2%, quarterly payout, max ₹30L
+- RBI Floating Rate Bonds: Currently 8.05%, taxable
+- Sovereign Gold Bonds (SGB): 2.5% p.a. + gold price appreciation, 8-year tenure, tax-free at maturity if held to maturity
+- Gold ETF vs SGB vs physical gold: Trade-offs clearly explained
+- Direct vs Regular mutual funds: Direct always better (no commission), show expense ratio difference
+
+DEBT & LOANS:
+- Home loan: LTV ratios (80-90%), CIBIL score requirements (750+), home loan interest deduction under Section 24 (₹2L limit)
+- Personal loan: Typically 12-24% interest, avalanche vs snowball method
+- Credit card: 36-42% annual interest, always pay full amount
+- Gold loan: Lower interest (10-15%) secured, useful alternative
+- CIBIL score: Factors, recovery timeline, hard vs soft inquiry
+
+INSURANCE (INDIA-SPECIFIC):
+- Term life: Only pure term plans (not ULIPs, not endowment, not money-back)
+- Coverage: 10-15x annual income minimum
+- Best pure term insurers: HDFC Click2Protect, ICICI iProtect, Tata AIA — compare on claim settlement ratio
+- Health insurance: Individual vs family floater, restore benefit, waiting periods
+- NEVER recommend LIC endowment/money-back/ULIP as investment
+
+FREELANCER/SELF-EMPLOYED SPECIFICS:
+- GST: Mandatory registration above ₹20L turnover (₹10L for some states and service providers)
+- Presumptive taxation: Section 44ADA (50% of gross receipts for professionals, up to ₹75L)
+- Business expenses deductible: Internet, phone, laptop, workspace rent, professional development
+- No EPF as freelancer → NPS + mutual fund SIP for retirement
+- Variable income budgeting: Base budget on lowest 3-month average
+
+OUTPUT FORMAT:
+Return ONLY valid JSON. No markdown, no preamble, no explanation outside JSON.
+{
+  "health_score": <integer 0-100>,
+  "health_label": "<Healthy|Caution|Critical>",
+  "health_summary": "<2 sentences specific to their numbers>",
+  "actions": [
+    {
+      "priority": "<critical|high|medium|low>",
+      "title": "<specific action title>",
+      "timeline": "<Do this: today|this week|this month|in 3 months|in 6 months|in 1 year>",
+      "impact": "<High impact|Medium impact|Foundation>",
+      "description": "<2-3 sentences. MUST reference their actual rupee amounts. Explain why THIS matters for THEIR specific situation.>",
+      "steps": [
+        "<concrete actionable step with specific numbers/platforms/actions>",
+        "<step 2>",
+        "<step 3>"
+      ]
+    }
+  ]
+}
+
+CRITICAL RULES:
+1. NEVER provide specific stock picks or specific fund names as the only option — say "Nifty 50 Index Fund (e.g., UTI Nifty 50, HDFC Index Fund Nifty 50)"
+2. Always add: this is educational guidance, not SEBI-regulated investment advice
+3. Use Indian number formatting: ₹1,00,000 not ₹100,000
+4. Reference their ACTUAL numbers — if income is ₹60,000 say "₹60,000 monthly income" not "your income"
+5. Order actions by urgency: emergency fund → insurance → high-interest debt → tax optimisation → investing
+6. For debt: always recommend clearing highest-interest first (avalanche method) unless psychological argument for snowball
+7. Return 5-7 actions. Not more. Quality over quantity.
+8. If user writes in Hindi, respond with Hindi text inside JSON strings.`;
+```
+
+---
+
+## Confidence Scoring System
+
+See `references/confidence-scoring.md` for the full confidence system architecture.
+
+**Quick reference — routing thresholds:**
+
+| Score | Route | SLA |
+|-------|-------|-----|
+| ≥ 85, no flags | `auto_approve` | Instant |
+| 70–84 | `community_queue` | 4 hours |
+| 55–69 | `cfp_queue` | 2 hours |
+| 40–54 | `senior_cfp` | 30 minutes |
+| < 40 | `paid_consultation` | User books session |
+
+**Always auto-flag these situations regardless of score:**
+- NRI taxation (DTAA, foreign income)
+- HUF (Hindu Undivided Family) accounts
+- ESOP taxation (especially cross-border)
+- Business succession / inheritance
+- Derivatives / F&O trading
+- Debt > 10x annual income
+- Any mention of "chit fund" or "scheme"
+
+---
+
+## Inner Ring System
+
+Five membership tiers. See `references/inner-rings.md` for full specification.
+
+| Ring | Hindi Name | Cap | Entry |
+|------|------------|-----|-------|
+| 1 | Beej (बीज) | Unlimited | Automatic on signup |
+| 2 | Saathi (साथी) | Unlimited | 30+ helpful votes, 30+ days active |
+| 3 | Sevak (सेवक) | 201 | Application + quiz + commitment |
+| 4 | Sutradhaar (सूत्रधार) | 51 | Founder invite only |
+| 5 | Nirmata (निर्माता) | 11 | Founder selection, permanent |
+
+**Database column:** `profiles.ring_tier` (int 1–5) + `profiles.ring_name` (text)
+
+**FinCoin rates:**
+- Helpful answer upvoted: +10 coins
+- Plan reviewed (Sevak): +50 coins per review
+- New member referral: +100 coins
+- 100 coins = 1 month Pro subscription (₹199 value)
+
+---
+
+## Legal Constraints (Must Follow in All Code)
+
+1. **SEBI disclaimer** — add to every AI plan output, every page that shows financial guidance:
+   ```typescript
+   export const SEBI_DISCLAIMER = "This content is generated by AI for educational purposes only and does not constitute investment advice under SEBI (Investment Advisers) Regulations, 2013. For personalised securities advice, consult a SEBI-registered Investment Adviser."
+   ```
+
+2. **Never use the word "advice"** in UI copy. Use: guidance, suggestions, plan, recommendations.
+
+3. **Expert credential verification** — before displaying any expert's badge, check `experts.verified = true`. Never show unverified experts as verified.
+
+4. **AI disclosure** — per SEBI January 2025 rule, all AI-generated content must be labelled "Generated by AI".
+
+5. **Data collection consent** — before storing any financial data (income, debt, goals), show consent checkbox. Store `consented: true` in training_data table.
+
+6. **Delete my data** — every user profile page must have a "Delete account and all data" button that triggers a cascade delete.
+
+7. **Rate limiting** — all AI API routes must be rate-limited: 5 requests/minute per user (free tier), 20/minute (pro tier). Use Upstash Redis.
+
+---
+
+## API Route Patterns
+
+### AI Plan Generation (Streaming)
+
+```typescript
+// app/api/plan/route.ts
+import Anthropic from '@anthropic-ai/sdk'
+import { INDIA_FINANCE_SYSTEM_PROMPT } from '@/lib/prompts/india-finance'
+
+export async function POST(req: Request) {
+  const { income, expenses, savings, debt, age, goals, situation, employment, language } = await req.json()
+
+  // Rate limit check (Upstash Redis)
+  // ... rate limit logic ...
+
+  const userMessage = buildUserMessage({ income, expenses, savings, debt, age, goals, situation, employment })
+
+  const client = new Anthropic()  // uses ANTHROPIC_API_KEY env var
+
+  const stream = await client.messages.stream({
+    model: 'claude-haiku-4-5-20251001',  // use Sonnet for Pro users
+    max_tokens: 2000,
+    system: INDIA_FINANCE_SYSTEM_PROMPT,
+    messages: [{ role: 'user', content: userMessage }]
+  })
+
+  return new Response(stream.toReadableStream(), {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+    }
+  })
+}
+
+function buildUserMessage(data: any): string {
+  const savingsRate = data.income && data.expenses
+    ? Math.round(((data.income - data.expenses) / data.income) * 100)
+    : null
+
+  return `FINANCIAL PROFILE:
+- Age: ${data.age || 'not provided'} years
+- Employment: ${data.employment}
+- Monthly income: ₹${Number(data.income).toLocaleString('en-IN')}
+- Monthly expenses: ₹${Number(data.expenses).toLocaleString('en-IN')}
+- Savings potential: ₹${Number(data.income - data.expenses).toLocaleString('en-IN')}/month (${savingsRate}% savings rate)
+- Total savings/investments: ₹${Number(data.savings).toLocaleString('en-IN')}
+- Total debt: ₹${Number(data.debt).toLocaleString('en-IN')}
+- Goals: ${data.goals?.join(', ') || 'not specified'}
+${data.situation ? `\nAdditional context: "${data.situation}"` : ''}
+
+Generate a personalised financial action plan. Reference actual rupee amounts. Use India-specific instruments.`
+}
+```
+
+### Confidence Scoring
+
+```typescript
+// app/api/plan/confidence/route.ts
+// Called AFTER plan generation. Second Claude call to score AI's own output.
+
+export const CONFIDENCE_PROMPT = `You are a quality control system for Indian financial plans.
+Given the user's situation and AI-generated plan, score confidence on 6 dimensions (0-100 each):
+
+1. situation_completeness: How much usable financial data did the user provide?
+2. topic_risk: How regulated/sensitive? (securities advice = high risk, budgeting = low risk)
+3. complexity: Standard case (young salaried, basic SIP question) vs unusual (NRI, HUF, ESOP)?
+4. plan_consistency: Does the plan's internal logic hold? (e.g., recommending ELSS while credit card debt exists = flag)
+5. regulatory_sensitivity: Does it touch SEBI-regulated investment advice territory?
+6. historical_similarity: (Score 70 if unknown — will improve as platform accumulates data)
+
+AUTO-FLAG these regardless of score (set flags array):
+- NRI, DTAA, foreign income
+- HUF accounts
+- ESOP (especially cross-border)
+- F&O / derivatives
+- Debt > 10x annual income
+- Any chit fund or pyramid scheme mention
+- Inheritance / succession planning
+
+Return ONLY valid JSON:
+{
+  "scores": {
+    "situation_completeness": <int>,
+    "topic_risk": <int>,
+    "complexity": <int>,
+    "plan_consistency": <int>,
+    "regulatory_sensitivity": <int>,
+    "historical_similarity": <int>
+  },
+  "weighted_average": <int>,
+  "routing": "<auto_approve|community_queue|cfp_queue|senior_cfp|paid_consultation>",
+  "routing_reason": "<one sentence>",
+  "flags": ["<flag1>", "<flag2>"]
+}`
+```
+
+---
+
+## Monetisation
+
+| Plan | Price | AI Plans | Scenario Planner | Life Events | Expert Booking |
+|------|-------|----------|-----------------|-------------|----------------|
+| Free | ₹0 | 2/month | No | No | No |
+| Pro | ₹199/month | Unlimited (Sonnet) | Yes | Yes | 10% discount |
+
+**Payment:** Razorpay for Indian UPI/cards. Stripe for international.
+**Commission:** 15–20% on expert session bookings.
+
+---
+
+## Reference Files
+
+Read these when working on the relevant subsystem:
+
+- `references/confidence-scoring.md` — Full confidence scoring algorithm, routing logic, CFP dashboard UX
+- `references/inner-rings.md` — Complete ring system: Beej→Nirmata, FinCoin economy, gamification, launch sequence
+- `references/legal-compliance.md` — All legal requirements: MCA, SEBI, DPDP Act, IT Act, GST, IRDAI
+- `references/india-finance-knowledge.md` — Extended India finance knowledge base for edge cases
+- `references/community-system.md` — Community Q&A architecture, RAG setup, moderation
+
+---
+
+## Environment Variables Required
+
+```bash
+# .env.local
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=       # server-side only, never expose to browser
+ANTHROPIC_API_KEY=               # server-side only, never expose to browser
+UPSTASH_REDIS_REST_URL=
+UPSTASH_REDIS_REST_TOKEN=
+RAZORPAY_KEY_ID=
+RAZORPAY_KEY_SECRET=             # server-side only
+RESEND_API_KEY=
+NEXT_PUBLIC_APP_URL=             # e.g. https://fincoach.in
+```
+
+---
+
+## Common Mistakes to Avoid
+
+1. **Never expose `ANTHROPIC_API_KEY` to the browser.** All AI calls go through `/api/` routes.
+2. **Never store exact income/salary numbers** — store ranges (₹40k–₹60k) or use them transiently.
+3. **Never skip the SEBI disclaimer** on any page showing financial guidance.
+4. **Never call CFP-verified without checking `experts.verified = true`** in DB.
+5. **Never use `regular` mutual fund links** in affiliate recommendations — always `direct` plans.
+6. **Never hardcode rupee amounts** from the system prompt into UI — always pull from AI response.
+7. **Always use Indian number formatting** — `toLocaleString('en-IN')` — not Western (1,000,000 → 10,00,000).
+8. **Always rate-limit AI routes** — unprotected AI routes will be abused and cost money fast.
