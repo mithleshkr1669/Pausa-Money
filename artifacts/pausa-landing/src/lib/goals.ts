@@ -1,5 +1,6 @@
 import { supabase, isSupabaseConfigured } from "./supabase";
 import { upgradeRingTier, type RingTier } from "./community";
+import type { FinancialProfile } from "./financial";
 
 export interface SavingsGoal {
   id: string;
@@ -15,16 +16,16 @@ export interface SavingsGoal {
 }
 
 export const GOAL_CATEGORIES = [
-  { value: "medical",     label: "Medical Emergency",    emoji: "🏥" },
-  { value: "education",   label: "Education",            emoji: "📚" },
-  { value: "home",        label: "Home Down Payment",    emoji: "🏠" },
-  { value: "vehicle",     label: "Vehicle",              emoji: "🚗" },
-  { value: "wedding",     label: "Wedding",              emoji: "💍" },
-  { value: "vacation",    label: "Vacation",             emoji: "✈️" },
-  { value: "business",    label: "Business",             emoji: "💼" },
-  { value: "retirement",  label: "Retirement",           emoji: "🌅" },
-  { value: "emergency",   label: "Emergency Fund",       emoji: "🛟" },
-  { value: "other",       label: "Other",                emoji: "🎯" },
+  { value: "medical",    label: "Medical Emergency",    emoji: "🏥" },
+  { value: "education",  label: "Education",            emoji: "📚" },
+  { value: "home",       label: "Home Down Payment",    emoji: "🏠" },
+  { value: "vehicle",    label: "Vehicle",              emoji: "🚗" },
+  { value: "wedding",    label: "Wedding",              emoji: "💍" },
+  { value: "vacation",   label: "Vacation",             emoji: "✈️" },
+  { value: "business",   label: "Business",             emoji: "💼" },
+  { value: "retirement", label: "Retirement",           emoji: "🌅" },
+  { value: "emergency",  label: "Emergency Fund",       emoji: "🛟" },
+  { value: "other",      label: "Other",                emoji: "🎯" },
 ] as const;
 
 export function getCategoryMeta(value: string) {
@@ -38,15 +39,38 @@ export function monthsToGoal(target: number, current: number, monthly: number): 
   return Math.ceil(remaining / monthly);
 }
 
-// ── CRUD ─────────────────────────────────────────────────────────────────────
+// ── Daily Budget Analysis ─────────────────────────────────────────────────────
+
+export interface DailyBudgetAnalysis {
+  dailyExpenseLimit: number;    // total monthly expenses / 30
+  dailySavingsPotential: number; // monthly savings / 30
+  daysAheadIfUnderBudget: number; // extra days goal is shortened if user saves the daily limit
+}
+
+export function analyzeDailyBudget(fp: FinancialProfile, goal: SavingsGoal): DailyBudgetAnalysis {
+  const monthlyExpenses = fp.housing_expense + fp.food_expense + fp.transport_expense + fp.utilities_expense + fp.insurance_expense + fp.entertainment_expense + fp.other_expense;
+  const dailyExpenseLimit = Math.round(monthlyExpenses / 30);
+  const monthlySavings = Math.max(0, fp.monthly_income - monthlyExpenses);
+  const dailySavingsPotential = Math.round(monthlySavings / 30);
+
+  // If they save the daily limit on top of their monthly contribution, how many months faster?
+  const currentRemaining = goal.target_amount - goal.current_amount;
+  const currentRate = goal.monthly_contribution;
+  const improvedRate = currentRate + (dailySavingsPotential * 30);
+  const currentMonths = currentRate > 0 ? Math.ceil(currentRemaining / currentRate) : Infinity;
+  const improvedMonths = improvedRate > 0 ? Math.ceil(currentRemaining / improvedRate) : Infinity;
+  const daysAheadIfUnderBudget = isFinite(currentMonths) && isFinite(improvedMonths)
+    ? Math.max(0, (currentMonths - improvedMonths) * 30)
+    : 0;
+
+  return { dailyExpenseLimit, dailySavingsPotential, daysAheadIfUnderBudget };
+}
+
+// ── CRUD ──────────────────────────────────────────────────────────────────────
 
 export async function getGoals(userId: string): Promise<SavingsGoal[]> {
   if (!isSupabaseConfigured || !supabase) return [];
-  const { data, error } = await supabase
-    .from("savings_goals")
-    .select("*")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false });
+  const { data, error } = await supabase.from("savings_goals").select("*").eq("user_id", userId).order("created_at", { ascending: false });
   if (error) console.error("[getGoals]", error.message);
   return (data as SavingsGoal[]) ?? [];
 }
@@ -56,26 +80,23 @@ export async function createGoal(
   goal: Omit<SavingsGoal, "id" | "user_id" | "is_completed" | "created_at">
 ): Promise<{ data: SavingsGoal | null; error: string | null }> {
   if (!isSupabaseConfigured || !supabase) return { data: null, error: "Supabase not configured." };
-  const { data, error } = await supabase
-    .from("savings_goals")
-    .insert({ user_id: userId, ...goal, is_completed: false })
-    .select()
-    .single();
+  const { data, error } = await supabase.from("savings_goals").insert({ user_id: userId, ...goal, is_completed: false }).select().single();
   if (error) { console.error("[createGoal]", error.message); return { data: null, error: error.message }; }
   return { data: data as SavingsGoal, error: null };
 }
 
-export async function updateGoalProgress(
-  goalId: string,
-  currentAmount: number,
-  userId: string
-): Promise<{ completed: boolean; error: string | null }> {
+export async function updateGoalContribution(goalId: string, monthlyContribution: number): Promise<{ error: string | null }> {
+  if (!isSupabaseConfigured || !supabase) return { error: "Supabase not configured." };
+  const { error } = await supabase.from("savings_goals").update({ monthly_contribution: monthlyContribution }).eq("id", goalId);
+  if (error) return { error: error.message };
+  return { error: null };
+}
+
+export async function updateGoalProgress(goalId: string, currentAmount: number, userId: string): Promise<{ completed: boolean; error: string | null }> {
   if (!isSupabaseConfigured || !supabase) return { completed: false, error: "Supabase not configured." };
   const { data: goal } = await supabase.from("savings_goals").select("target_amount").eq("id", goalId).single();
   const isCompleted = goal ? currentAmount >= goal.target_amount : false;
-  const { error } = await supabase.from("savings_goals")
-    .update({ current_amount: currentAmount, is_completed: isCompleted })
-    .eq("id", goalId);
+  const { error } = await supabase.from("savings_goals").update({ current_amount: currentAmount, is_completed: isCompleted }).eq("id", goalId);
   if (error) return { completed: false, error: error.message };
   if (isCompleted) await checkMilestoneUpgrade(userId);
   return { completed: isCompleted, error: null };
@@ -86,15 +107,13 @@ export async function deleteGoal(goalId: string): Promise<void> {
   await supabase.from("savings_goals").delete().eq("id", goalId);
 }
 
-// ── Milestone upgrade logic ───────────────────────────────────────────────────
+// ── Milestone Upgrades ────────────────────────────────────────────────────────
 
 export async function checkMilestoneUpgrade(userId: string): Promise<{ upgraded: boolean; newTier?: RingTier }> {
   if (!isSupabaseConfigured || !supabase) return { upgraded: false };
   const { data: profile } = await supabase.from("profiles").select("ring_tier").eq("id", userId).single();
   const currentTier = (profile?.ring_tier ?? 1) as RingTier;
-  const { count: completedGoals } = await supabase
-    .from("savings_goals").select("*", { count: "exact", head: true })
-    .eq("user_id", userId).eq("is_completed", true);
+  const { count: completedGoals } = await supabase.from("savings_goals").select("*", { count: "exact", head: true }).eq("user_id", userId).eq("is_completed", true);
   const { data: fp } = await supabase.from("financial_profiles").select("id").eq("user_id", userId).single();
   const hasFinancialProfile = !!fp;
 

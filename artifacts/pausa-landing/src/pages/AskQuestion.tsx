@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { motion } from "framer-motion";
-import { ArrowLeft, Loader2, AlertCircle } from "lucide-react";
+import { ArrowLeft, Loader2, AlertCircle, Plus, X } from "lucide-react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
-import { createPost, POST_TAGS, upsertProfile } from "@/lib/community";
+import { createPost, POST_TAGS, upsertProfile, type FamilyMember } from "@/lib/community";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { useUser } from "@clerk/clerk-react";
 
@@ -16,19 +16,38 @@ const TAG_LABELS: Record<string, string> = {
   nri: "NRI", inheritance: "Inheritance",
 };
 
+const RELATION_OPTIONS = [
+  { value: "parents",  label: "Parents",  emoji: "👨‍👩‍" },
+  { value: "spouse",   label: "Spouse",   emoji: "💑" },
+  { value: "children", label: "Children", emoji: "👧" },
+  { value: "sibling",  label: "Sibling",  emoji: "🤝" },
+  { value: "other",    label: "Other",    emoji: "👤" },
+] as const;
+
 function AskQuestionInner() {
   const { user } = useUser();
   const [, setLocation] = useLocation();
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
   const toggleTag = (tag: string) =>
-    setSelectedTags((prev) =>
-      prev.includes(tag) ? prev.filter((t) => t !== tag) : prev.length < 3 ? [...prev, tag] : prev
-    );
+    setSelectedTags((prev) => prev.includes(tag) ? prev.filter((t) => t !== tag) : prev.length < 3 ? [...prev, tag] : prev);
+
+  const toggleFamily = (relation: FamilyMember["relation"]) => {
+    setFamilyMembers((prev) => {
+      const existing = prev.find((m) => m.relation === relation);
+      if (existing) return prev.filter((m) => m.relation !== relation);
+      return [...prev, { relation, count: 1 }];
+    });
+  };
+
+  const setFamilyCount = (relation: FamilyMember["relation"], count: number) => {
+    setFamilyMembers((prev) => prev.map((m) => m.relation === relation ? { ...m, count } : m));
+  };
 
   const handleSubmit = async () => {
     if (!user) return;
@@ -38,11 +57,8 @@ function AskQuestionInner() {
     if (!isSupabaseConfigured) { setError("Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to .env."); return; }
 
     setError(""); setSubmitting(true);
-
-    // Ensure profile exists first (foreign key)
     await upsertProfile(user.id, user.fullName ?? user.primaryEmailAddress?.emailAddress ?? "User", user.imageUrl ?? undefined);
-
-    const { data: post, error: err } = await createPost(user.id, title.trim(), body.trim(), selectedTags);
+    const { data: post, error: err } = await createPost(user.id, title.trim(), body.trim(), selectedTags, familyMembers);
     setSubmitting(false);
     if (err || !post) { setError(err ?? "Failed to create post. Please try again."); return; }
     setLocation(`/community/${post.id}`);
@@ -51,7 +67,6 @@ function AskQuestionInner() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Navbar />
-
       <main className="max-w-2xl mx-auto px-4 sm:px-6 pt-24 md:pt-28 pb-24">
         <Link href="/community">
           <button className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors mb-8">
@@ -63,7 +78,8 @@ function AskQuestionInner() {
           <h1 className="text-2xl md:text-3xl font-display font-bold mb-2">Ask a Question</h1>
           <p className="text-muted-foreground mb-8 text-sm">Be specific. Include your income range, goals, and any current investments.</p>
 
-          <div className="space-y-5">
+          <div className="space-y-6">
+            {/* Title */}
             <div>
               <label className="block text-sm font-medium mb-2">Title <span className="text-primary">*</span></label>
               <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={200}
@@ -72,6 +88,7 @@ function AskQuestionInner() {
               <p className="text-xs text-muted-foreground mt-1 text-right">{title.length}/200</p>
             </div>
 
+            {/* Body */}
             <div>
               <label className="block text-sm font-medium mb-2">Details <span className="text-primary">*</span></label>
               <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={7}
@@ -79,8 +96,44 @@ function AskQuestionInner() {
                 className="w-full bg-card border border-white/8 rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/40 resize-y transition-colors" />
             </div>
 
+            {/* Family dependents */}
             <div>
-              <label className="block text-sm font-medium mb-1">Tags <span className="text-primary">*</span><span className="text-muted-foreground font-normal ml-2">(pick up to 3)</span></label>
+              <label className="block text-sm font-medium mb-1">
+                Family Members You Support <span className="text-muted-foreground font-normal text-xs">(optional — helps community give better advice)</span>
+              </label>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {RELATION_OPTIONS.map(({ value, label, emoji }) => {
+                  const active = familyMembers.find((m) => m.relation === value);
+                  return (
+                    <div key={value} className="flex items-center gap-1">
+                      <button type="button" onClick={() => toggleFamily(value)}
+                        className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border font-medium transition-all ${active ? "border-primary/40 bg-primary/10 text-primary" : "border-white/10 text-muted-foreground hover:border-white/20"}`}>
+                        <span>{emoji}</span>{label}
+                      </button>
+                      {active && (
+                        <div className="flex items-center gap-0.5 bg-card border border-white/8 rounded-full px-2 py-1">
+                          <button onClick={() => active.count > 1 ? setFamilyCount(value, active.count - 1) : toggleFamily(value)} className="text-muted-foreground hover:text-foreground w-4 h-4 flex items-center justify-center">−</button>
+                          <span className="text-xs font-mono w-4 text-center">{active.count}</span>
+                          <button onClick={() => setFamilyCount(value, active.count + 1)} className="text-muted-foreground hover:text-foreground w-4 h-4 flex items-center justify-center"><Plus className="w-3 h-3" /></button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              {familyMembers.length > 0 && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  Supporting: {familyMembers.map((m) => `${m.count} ${m.relation}`).join(", ")}
+                </p>
+              )}
+            </div>
+
+            {/* Tags */}
+            <div>
+              <label className="block text-sm font-medium mb-1">
+                Tags <span className="text-primary">*</span>
+                <span className="text-muted-foreground font-normal ml-2">(pick up to 3)</span>
+              </label>
               <div className="flex flex-wrap gap-2 mt-2">
                 {POST_TAGS.map((tag) => (
                   <button key={tag} type="button" onClick={() => toggleTag(tag)}
@@ -91,6 +144,7 @@ function AskQuestionInner() {
               </div>
             </div>
 
+            {/* Disclaimer */}
             <div className="bg-card/50 border border-white/5 rounded-xl p-4 text-xs text-muted-foreground leading-relaxed">
               <span className="text-foreground font-medium">Reminder:</span> Community answers are educational only. For regulated advice, consult a SEBI-registered investment adviser.
             </div>

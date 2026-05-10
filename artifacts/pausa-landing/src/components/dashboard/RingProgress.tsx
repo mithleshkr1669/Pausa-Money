@@ -3,11 +3,11 @@ import { RING_CONFIG, type RingTier } from "@/lib/community";
 import { ChevronRight, Lock } from "lucide-react";
 
 const MILESTONES: Record<RingTier, { label: string; criteria: string }> = {
-  1: { label: "Newcomer",   criteria: "You're here! Start your journey." },
-  2: { label: "Companion",  criteria: "Complete 1 goal + fill your Financial Profile" },
-  3: { label: "Guardian",   criteria: "Complete 3 savings goals" },
-  4: { label: "Director",   criteria: "Complete 6 savings goals" },
-  5: { label: "Founder",    criteria: "Founder-selected — top community contributors" },
+  1: { label: "A new beginning, planted with intent.",   criteria: "You're here — welcome to the forest! 🌱" },
+  2: { label: "Breaking ground, first growth emerging.", criteria: "Complete 1 goal + fill your Financial Profile" },
+  3: { label: "Taking root, growing steadily.",          criteria: "Complete 3 savings goals" },
+  4: { label: "Thriving, sheltering others.",            criteria: "Complete 6 savings goals" },
+  5: { label: "Full canopy, shaping the landscape.",     criteria: "Founder-selected — top community contributors" },
 };
 
 export function RingProgress({
@@ -24,21 +24,19 @@ export function RingProgress({
   const next = RING_CONFIG[nextTier];
   const isMaxTier = currentTier === 5;
 
-  // Progress toward next tier
   let progressPct = 100;
   let progressLabel = "";
   if (!isMaxTier) {
     if (currentTier === 1) {
-      const goalsDone = hasFinancialProfile ? 1 : 0;
-      const profileDone = hasFinancialProfile ? 1 : 0;
-      progressPct = ((goalsDone + profileDone) / 2) * 100;
-      progressLabel = `${goalsDone + profileDone}/2 criteria met`;
+      const done = (completedGoals >= 1 ? 1 : 0) + (hasFinancialProfile ? 1 : 0);
+      progressPct = (done / 2) * 100;
+      progressLabel = `${done}/2 criteria met`;
     } else if (currentTier === 2) {
       progressPct = Math.min((completedGoals / 3) * 100, 100);
-      progressLabel = `${Math.min(completedGoals, 3)}/3 goals completed`;
+      progressLabel = `${Math.min(completedGoals, 3)}/3 goals`;
     } else if (currentTier === 3) {
       progressPct = Math.min((completedGoals / 6) * 100, 100);
-      progressLabel = `${Math.min(completedGoals, 6)}/6 goals completed`;
+      progressLabel = `${Math.min(completedGoals, 6)}/6 goals`;
     } else {
       progressPct = 0;
       progressLabel = "Founder-selected";
@@ -51,35 +49,32 @@ export function RingProgress({
 
       {/* Current ring */}
       <div className="flex items-center gap-4 mb-6">
-        <div
-          className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl shrink-0 border"
-          style={{ background: current.bg, borderColor: current.border }}
-        >
+        <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl shrink-0 border"
+          style={{ background: current.bg, borderColor: current.border }}>
           {current.icon}
         </div>
         <div>
           <p className="text-xs text-muted-foreground font-mono uppercase tracking-widest mb-0.5">Current Ring</p>
           <p className="text-2xl font-display font-bold" style={{ color: current.color }}>{current.name}</p>
-          <p className="text-xs text-muted-foreground mt-0.5">{MILESTONES[currentTier].label}</p>
+          <p className="text-xs text-muted-foreground mt-0.5 italic">{current.tagline}</p>
         </div>
       </div>
 
       {/* All tiers */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-end justify-between mb-6 px-2">
         {([1, 2, 3, 4, 5] as RingTier[]).map((tier) => {
           const cfg = RING_CONFIG[tier];
           const done = tier <= currentTier;
           const active = tier === currentTier;
           return (
             <div key={tier} className="flex flex-col items-center gap-1.5">
-              <div
-                className="w-10 h-10 rounded-xl flex items-center justify-center text-lg border transition-all"
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg border transition-all"
                 style={{
                   background: done ? cfg.bg : "rgba(255,255,255,0.03)",
                   borderColor: done ? cfg.border : "rgba(255,255,255,0.08)",
-                  transform: active ? "scale(1.15)" : "scale(1)",
-                }}
-              >
+                  transform: active ? "scale(1.2)" : "scale(1)",
+                  boxShadow: active ? `0 0 12px ${cfg.color}40` : "none",
+                }}>
                 {done ? cfg.icon : <Lock className="w-3.5 h-3.5 text-muted-foreground/40" />}
               </div>
               <span className="text-[10px] font-mono" style={{ color: done ? cfg.color : "rgba(255,255,255,0.2)" }}>
@@ -93,8 +88,8 @@ export function RingProgress({
       {/* Progress to next */}
       {!isMaxTier && (
         <div>
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs text-muted-foreground">Progress to <span style={{ color: next.color }}>{next.name}</span></span>
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-xs text-muted-foreground">Progress to <span style={{ color: next.color }}>{next.name} {next.icon}</span></span>
             <span className="text-xs font-mono text-muted-foreground">{progressLabel}</span>
           </div>
           <div className="h-2 w-full bg-background rounded-full overflow-hidden border border-white/5">
@@ -107,15 +102,14 @@ export function RingProgress({
             />
           </div>
           <p className="text-xs text-muted-foreground/60 mt-2 flex items-center gap-1">
-            <ChevronRight className="w-3 h-3" />
-            {MILESTONES[nextTier].criteria}
+            <ChevronRight className="w-3 h-3" />{MILESTONES[nextTier].criteria}
           </p>
         </div>
       )}
       {isMaxTier && (
         <div className="text-center py-2">
           <p className="text-sm font-display font-semibold" style={{ color: current.color }}>
-            👑 You've reached the highest ring!
+            🌲🌲 You've reached Forest — the highest ring!
           </p>
         </div>
       )}

@@ -358,7 +358,12 @@ function DashboardInner() {
                   <div className="grid md:grid-cols-2 gap-4">
                     {goals.map((goal, i) => (
                       <GoalCard key={goal.id} goal={goal} index={i}
-                        onUpdateProgress={handleUpdateProgress} onDelete={handleDeleteGoal} />
+                        financialProfile={financialProfile}
+                        onUpdateProgress={handleUpdateProgress}
+                        onDelete={handleDeleteGoal}
+                        onContributionUpdated={(id, amount) => {
+                          setGoals((prev) => prev.map((g) => g.id === id ? { ...g, monthly_contribution: amount } : g));
+                        }} />
                     ))}
                     <button onClick={() => setShowGoalModal(true)}
                       className="glass-panel rounded-2xl p-5 border-dashed flex flex-col items-center justify-center gap-2 text-muted-foreground hover:text-primary hover:border-primary/20 transition-colors h-32">

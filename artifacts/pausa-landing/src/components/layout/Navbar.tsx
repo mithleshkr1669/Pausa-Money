@@ -2,10 +2,9 @@ import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { GlowButton } from "@/components/ui/GlowButton";
 import { cn } from "@/lib/utils";
-import { Users, LogIn, LogOut, ChevronDown, LayoutDashboard, Menu, X } from "lucide-react";
+import { Users, LogIn, LogOut, ChevronDown, LayoutDashboard, Menu, X, Bot } from "lucide-react";
 import { isClerkConfigured } from "@/lib/clerk-config";
 
-// Clerk hooks only called when ClerkProvider is present
 function UserMenuClerk({ onNavClick }: { onNavClick?: () => void }) {
   const { useUser, useClerk } = require("@clerk/clerk-react");
   const { isSignedIn, user, isLoaded } = useUser();
@@ -21,17 +20,11 @@ function UserMenuClerk({ onNavClick }: { onNavClick?: () => void }) {
 
   return (
     <div className="relative">
-      <button
-        onClick={() => setOpen(!open)}
-        className="flex items-center gap-2 text-sm font-medium text-foreground hover:text-primary transition-colors"
-      >
-        {user.imageUrl ? (
-          <img src={user.imageUrl} alt="" className="w-7 h-7 rounded-full border border-white/10" />
-        ) : (
-          <div className="w-7 h-7 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center text-xs text-primary font-bold">
-            {initial}
-          </div>
-        )}
+      <button onClick={() => setOpen(!open)} className="flex items-center gap-2 text-sm font-medium text-foreground hover:text-primary transition-colors">
+        {user.imageUrl
+          ? <img src={user.imageUrl} alt="" className="w-7 h-7 rounded-full border border-white/10" />
+          : <div className="w-7 h-7 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center text-xs text-primary font-bold">{initial}</div>
+        }
         <span className="hidden sm:block max-w-24 truncate">{user.firstName ?? "Account"}</span>
         <ChevronDown className={`w-3.5 h-3.5 transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
@@ -44,20 +37,10 @@ function UserMenuClerk({ onNavClick }: { onNavClick?: () => void }) {
               <p className="text-xs text-muted-foreground">Signed in as</p>
               <p className="text-sm font-medium truncate">{user.primaryEmailAddress?.emailAddress}</p>
             </div>
-            <Link href="/dashboard">
-              <button className="w-full text-left px-4 py-2.5 text-sm hover:bg-white/5 transition-colors flex items-center gap-2" onClick={close}>
-                <LayoutDashboard className="w-4 h-4 text-muted-foreground" />Dashboard
-              </button>
-            </Link>
-            <Link href="/community">
-              <button className="w-full text-left px-4 py-2.5 text-sm hover:bg-white/5 transition-colors flex items-center gap-2" onClick={close}>
-                <Users className="w-4 h-4 text-muted-foreground" />Community
-              </button>
-            </Link>
-            <button
-              onClick={() => { signOut(); setLocation("/"); close(); }}
-              className="w-full text-left px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors flex items-center gap-2 border-t border-white/5"
-            >
+            <Link href="/dashboard"><button className="w-full text-left px-4 py-2.5 text-sm hover:bg-white/5 transition-colors flex items-center gap-2" onClick={close}><LayoutDashboard className="w-4 h-4 text-muted-foreground" />Dashboard</button></Link>
+            <Link href="/advisor"><button className="w-full text-left px-4 py-2.5 text-sm hover:bg-white/5 transition-colors flex items-center gap-2" onClick={close}><Bot className="w-4 h-4 text-muted-foreground" />AI Advisor</button></Link>
+            <Link href="/community"><button className="w-full text-left px-4 py-2.5 text-sm hover:bg-white/5 transition-colors flex items-center gap-2" onClick={close}><Users className="w-4 h-4 text-muted-foreground" />Community</button></Link>
+            <button onClick={() => { signOut(); setLocation("/"); close(); }} className="w-full text-left px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors flex items-center gap-2 border-t border-white/5">
               <LogOut className="w-4 h-4" />Sign Out
             </button>
           </div>
@@ -70,10 +53,7 @@ function UserMenuClerk({ onNavClick }: { onNavClick?: () => void }) {
 function SignInLink({ onClick }: { onClick?: () => void }) {
   return (
     <Link href="/sign-in">
-      <button
-        onClick={onClick}
-        className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
-      >
+      <button onClick={onClick} className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
         <LogIn className="w-4 h-4" />Sign In
       </button>
     </Link>
@@ -91,19 +71,22 @@ export function Navbar() {
   const [location] = useLocation();
 
   useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 20);
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
+    const h = () => setScrolled(window.scrollY > 20);
+    window.addEventListener("scroll", h);
+    return () => window.removeEventListener("scroll", h);
   }, []);
 
   useEffect(() => { setMobileOpen(false); }, [location]);
 
   const isHome = location === "/" || location === "";
   const closeMobile = () => setMobileOpen(false);
-  const scrollTo = (id: string) => {
-    document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
-    closeMobile();
-  };
+  const scrollTo = (id: string) => { document.getElementById(id)?.scrollIntoView({ behavior: "smooth" }); closeMobile(); };
+
+  const NAV_LINKS = [
+    { href: "/community", label: "Community", icon: <Users className="w-4 h-4" />, active: location.startsWith("/community") },
+    { href: "/dashboard",  label: "Dashboard",  icon: <LayoutDashboard className="w-4 h-4" />, active: location === "/dashboard" },
+    { href: "/advisor",    label: "AI Advisor", icon: <Bot className="w-4 h-4" />,             active: location === "/advisor" },
+  ];
 
   return (
     <nav className={cn(
@@ -117,7 +100,7 @@ export function Navbar() {
           <span className="font-display font-bold text-xl md:text-2xl tracking-tight text-foreground">Pausa</span>
         </Link>
 
-        {/* Desktop nav */}
+        {/* Desktop */}
         <div className="hidden md:flex items-center gap-4 lg:gap-6">
           {isHome && (
             <div className="flex items-center gap-5 text-sm font-medium text-muted-foreground">
@@ -126,16 +109,13 @@ export function Navbar() {
               <button onClick={() => scrollTo("how-it-works")} className="hover:text-primary transition-colors">Engine</button>
             </div>
           )}
-          <Link href="/community">
-            <button className={cn("flex items-center gap-1.5 text-sm font-medium transition-colors", location.startsWith("/community") ? "text-primary" : "text-muted-foreground hover:text-primary")}>
-              <Users className="w-4 h-4" />Community
-            </button>
-          </Link>
-          <Link href="/dashboard">
-            <button className={cn("flex items-center gap-1.5 text-sm font-medium transition-colors", location === "/dashboard" ? "text-primary" : "text-muted-foreground hover:text-primary")}>
-              <LayoutDashboard className="w-4 h-4" />Dashboard
-            </button>
-          </Link>
+          {NAV_LINKS.map((l) => (
+            <Link key={l.href} href={l.href}>
+              <button className={cn("flex items-center gap-1.5 text-sm font-medium transition-colors", l.active ? "text-primary" : "text-muted-foreground hover:text-primary")}>
+                {l.icon}{l.label}
+              </button>
+            </Link>
+          ))}
           <NavUserArea />
           {isHome && <GlowButton size="sm" onClick={() => scrollTo("download")}>Download APK</GlowButton>}
         </div>
@@ -143,11 +123,7 @@ export function Navbar() {
         {/* Mobile right */}
         <div className="flex md:hidden items-center gap-3">
           <NavUserArea onNavClick={closeMobile} />
-          <button
-            onClick={() => setMobileOpen(!mobileOpen)}
-            className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
-            aria-label="Toggle menu"
-          >
+          <button onClick={() => setMobileOpen(!mobileOpen)} className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors" aria-label="Toggle menu">
             {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
         </div>
@@ -165,16 +141,13 @@ export function Navbar() {
                 <div className="my-1 border-t border-white/5" />
               </>
             )}
-            <Link href="/community" onClick={closeMobile}>
-              <button className="w-full text-left px-3 py-2.5 text-sm font-medium text-muted-foreground hover:text-primary hover:bg-white/5 rounded-lg transition-colors flex items-center gap-2">
-                <Users className="w-4 h-4" />Community
-              </button>
-            </Link>
-            <Link href="/dashboard" onClick={closeMobile}>
-              <button className="w-full text-left px-3 py-2.5 text-sm font-medium text-muted-foreground hover:text-primary hover:bg-white/5 rounded-lg transition-colors flex items-center gap-2">
-                <LayoutDashboard className="w-4 h-4" />Dashboard
-              </button>
-            </Link>
+            {NAV_LINKS.map((l) => (
+              <Link key={l.href} href={l.href} onClick={closeMobile}>
+                <button className={cn("w-full text-left px-3 py-2.5 text-sm font-medium hover:bg-white/5 rounded-lg transition-colors flex items-center gap-2", l.active ? "text-primary" : "text-muted-foreground hover:text-primary")}>
+                  {l.icon}{l.label}
+                </button>
+              </Link>
+            ))}
             {isHome && (
               <div className="pt-2">
                 <GlowButton size="sm" className="w-full" onClick={() => scrollTo("download")}>Download APK</GlowButton>

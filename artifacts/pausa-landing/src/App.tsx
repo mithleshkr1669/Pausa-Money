@@ -11,6 +11,7 @@ import CommunityPage from "@/pages/Community";
 import CommunityPostPage from "@/pages/CommunityPost";
 import AskQuestionPage from "@/pages/AskQuestion";
 import DashboardPage from "@/pages/Dashboard";
+import AIAdvisorPage from "@/pages/AIAdvisor";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -29,6 +30,7 @@ function Routes() {
       <Route path="/community/ask" component={AskQuestionPage} />
       <Route path="/community/:id" component={CommunityPostPage} />
       <Route path="/dashboard" component={DashboardPage} />
+      <Route path="/advisor" component={AIAdvisorPage} />
       <Route component={NotFound} />
     </Switch>
   );
