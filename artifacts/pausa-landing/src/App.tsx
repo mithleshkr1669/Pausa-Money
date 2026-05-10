@@ -10,12 +10,11 @@ import SignUpPage from "@/pages/SignUp";
 import CommunityPage from "@/pages/Community";
 import CommunityPostPage from "@/pages/CommunityPost";
 import AskQuestionPage from "@/pages/AskQuestion";
+import DashboardPage from "@/pages/Dashboard";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: { retry: false, refetchOnWindowFocus: false },
-  },
+  defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false } },
 });
 
 function Routes() {
@@ -29,6 +28,7 @@ function Routes() {
       <Route path="/community" component={CommunityPage} />
       <Route path="/community/ask" component={AskQuestionPage} />
       <Route path="/community/:id" component={CommunityPostPage} />
+      <Route path="/dashboard" component={DashboardPage} />
       <Route component={NotFound} />
     </Switch>
   );
