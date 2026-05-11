@@ -7,6 +7,7 @@ import { CLERK_PUBLISHABLE_KEY, isClerkConfigured } from "@/lib/clerk-config";
 import Home from "@/pages/Home";
 import SignInPage from "@/pages/SignIn";
 import SignUpPage from "@/pages/SignUp";
+import OnboardingPage from "@/pages/Onboarding";
 import CommunityPage from "@/pages/Community";
 import CommunityPostPage from "@/pages/CommunityPost";
 import AskQuestionPage from "@/pages/AskQuestion";
@@ -26,6 +27,7 @@ function Routes() {
       <Route path="/sign-in/sso-callback" component={SignInPage} />
       <Route path="/sign-up" component={SignUpPage} />
       <Route path="/sign-up/sso-callback" component={SignUpPage} />
+      <Route path="/onboarding" component={OnboardingPage} />
       <Route path="/community" component={CommunityPage} />
       <Route path="/community/ask" component={AskQuestionPage} />
       <Route path="/community/:id" component={CommunityPostPage} />

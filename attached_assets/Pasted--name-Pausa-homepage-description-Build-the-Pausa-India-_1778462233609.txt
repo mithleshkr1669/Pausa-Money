@@ -1,0 +1,580 @@
+---
+name: Pausa-homepage
+description: >
+  Build the Pausa India pre-authentication homepage (landing page). Use this skill whenever
+  the user asks to build, design, redesign, or improve the Pausa home page, landing page,
+  hero section, origin story section, testimonials, vulnerability story, social proof, CTA
+  section, or anything that appears before the user signs up or logs in. Also triggers for:
+  "build the homepage", "design the landing page", "write the hero copy", "create the origin
+  story section", "add vulnerable stories", "show the community rings on homepage", "add trust
+  signals", "build the before-auth page". Always use this skill before writing any homepage
+  or landing page code for Pausa.
+---
+
+# Pausa Homepage — Pre-Auth Landing Page
+
+## What This Page Must Do
+
+This is the **only page a stranger sees before deciding to trust you**. It must do five things in order:
+
+1. **Earn attention** in 3 seconds (headline + subheadline)
+2. **Create recognition** — "this was made for me" (origin story + vulnerable moment)
+3. **Build trust** — real people, real stories, verified experts
+4. **Show the system** — the rings, the AI, the community
+5. **Convert** — one clear CTA: "Get my free financial plan"
+
+The page ends at the signup/login button. Nothing after that belongs here.
+
+---
+
+## Aesthetic Direction
+
+**Theme:** Warm, handmade, honest — like a letter written by someone who grew up in Bihar and figured things out the hard way. NOT a SaaS product page. NOT a bank. NOT a fintech startup with gradients and rocket emojis.
+
+**Palette:**
+
+```css
+:root {
+  /* Backgrounds — warm paper, not cold white */
+  --bg-primary: #faf7f2; /* warm off-white, like old paper */
+  --bg-secondary: #f2ede3; /* slightly deeper warm */
+  --bg-dark: #1a1612; /* deep warm dark for contrast sections */
+  --bg-card: #ffffff;
+
+  /* Ink — warm blacks */
+  --ink-primary: #1c1814;
+  --ink-secondary: #4a4438;
+  --ink-muted: #8c8070;
+  --ink-faint: #c4b9aa;
+
+  /* Accent — saffron India */
+  --saffron: #e8651a;
+  --saffron-soft: rgba(232, 101, 26, 0.1);
+  --saffron-glow: rgba(232, 101, 26, 0.22);
+
+  /* Trust signals */
+  --moss: #3d6b4f; /* verified / trusted green */
+  --moss-soft: rgba(61, 107, 79, 0.1);
+  --gold: #c49a1a; /* Nirmata / founding gold */
+  --gold-soft: rgba(196, 154, 26, 0.1);
+
+  /* Border */
+  --border: rgba(28, 24, 20, 0.1);
+  --border-strong: rgba(28, 24, 20, 0.2);
+}
+```
+
+**Typography:**
+
+```css
+/* Display — Lora (serif, warm, literary) */
+@import url("https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,700;1,400;1,500&family=Plus+Jakarta+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap");
+
+--font-display: "Lora", Georgia, serif; /* headlines, pull quotes */
+--font-body: "Plus Jakarta Sans", sans-serif; /* body text, UI */
+--font-mono: "JetBrains Mono", monospace; /* labels, stats, badges */
+```
+
+**Motion:** Subtle scroll-triggered fade-ins. No bouncing. No confetti. The page should feel like turning pages of a well-made book — deliberate, unhurried.
+
+---
+
+## Page Sections — In Exact Order
+
+### Section 1 — Navigation Bar
+
+```
+[🌿 Pausa]                    [हिंदी | English]  [Sign in]  [Get free plan →]
+```
+
+- Logo: leaf/seedling icon + "Pausa" in Lora serif
+- Language toggle: Hindi ↔ English (switches all copy on page)
+- "Get free plan →" button: saffron background, white text, pill shape
+- Sticky on scroll. Transparent at top, white+shadow after 60px scroll.
+- NO hamburger menu complexity. Clean and minimal.
+
+---
+
+### Section 2 — Hero (The Opening)
+
+**Layout:** Large left-aligned headline. No image. Let the words breathe.
+
+**Headline (English):**
+
+```
+You got your first salary.
+You asked the internet.
+You got a thousand opinions.
+
+Zero answers.
+```
+
+**Headline (Hindi):**
+
+```
+पहली तनख्वाह मिली।
+इंटरनेट से पूछा।
+हज़ार राय मिली।
+
+एक जवाब नहीं।
+```
+
+**Subheadline:**
+
+```
+Pausa is the honest elder sibling who figured it out first —
+and tells you exactly what to do with your money, in your language,
+for your situation. Free. In 8 seconds.
+```
+
+**CTA Button:**
+
+```
+[Get my free financial plan →]
+```
+
+Below button in small text:
+
+```
+No account needed to try · Available in Hindi & English · Reviewed by certified experts
+```
+
+**Visual treatment:**
+
+- Background: `--bg-primary` with a very subtle paper texture (SVG noise filter, opacity 0.04)
+- A thin saffron vertical rule on the left of the headline block
+- The word "Zero" in the headline should be in `--saffron` color
+- Faint radial gradient behind CTA button area
+- Fade in lines one by one on page load (stagger 200ms each)
+
+---
+
+### Section 3 — The Vulnerable Origin Story
+
+This is the most important section. It is NOT a feature list. It is a human story.
+
+**Section label (small caps, --font-mono):** `THE STORY`
+
+**Pull quote style — large, Lora italic:**
+
+```
+"मैं बिहार से हूँ।
+जहाँ पैसों की बात
+कभी नहीं होती थी।"
+
+— Founder, Pausa
+```
+
+Below the pull quote, body text (3 short paragraphs, Lora regular, large leading):
+
+```
+When I got my first salary, I did what every confused young Indian does.
+I asked Google. I asked Reddit. I joined WhatsApp groups promising
+"guaranteed returns." I watched finfluencers who were more interested
+in selling me their ₹9,999 course.
+
+Nobody told me the difference between a regular and direct mutual fund.
+Nobody explained why the LIC policy my father was so proud of was
+quietly destroying our family's savings. Nobody said:
+"Here's what YOU should do first — given your actual situation."
+
+I got a thousand opinions. Zero honest answers.
+
+So I built Pausa — the platform I needed at 22.
+Not more articles. Not another forum. Something that listens to
+your situation and tells you, clearly: here is what to do next.
+```
+
+**Visual treatment:**
+
+- Dark background section (`--bg-dark`)
+- Warm cream text on dark
+- Large oversized quotation mark " in saffron at 15% opacity behind the pull quote
+- A faint horizontal rule separator above and below
+- Photo placeholder: a simple illustrated portrait (SVG silhouette) — no stock photo
+
+---
+
+### Section 4 — The Problem (Recognition Section)
+
+**Section label:** `WHY THIS EXISTS`
+
+**Headline:**
+
+```
+Every Indian finance community
+has the same fatal flaw.
+```
+
+**Six problem cards** in a 3×2 grid. Each card: icon + bold title + one sentence.
+
+| Icon | Title                 | One sentence                                                                             |
+| ---- | --------------------- | ---------------------------------------------------------------------------------------- |
+| 💬   | Opinions, not answers | Reddit gives you 10 contradictory opinions from strangers. Nobody is accountable.        |
+| 🇺🇸   | Built for America     | 90% of advice is about 401k, Roth IRA, HSA. Nobody understands PPF, NPS, or ELSS.        |
+| 🧠   | Forgets you exist     | Every post starts from zero. No memory. No journey. You are a stranger every time.       |
+| 🎭   | Finfluencer agendas   | That YouTuber earns commission from every product he "recommends."                       |
+| 🔤   | English only          | 90% of financial content is in English. 90% of India is not.                             |
+| ⏳   | Content, not action   | You've read "invest in SIP" 50 times. You still haven't started. Nobody helps you do it. |
+
+**After the grid, a dividing line and a contrast statement:**
+
+```
+Pausa doesn't give you more content.
+It gives you your next three actions.
+Specific to your income. Your debt. Your goals.
+In Hindi or English. In 8 seconds.
+```
+
+---
+
+### Section 5 — Vulnerable User Stories (Social Proof)
+
+NOT testimonials. These are honest, specific, real-feeling stories. Written in first person. Include the person's city, age, situation. Make them feel like Reddit posts — raw and real.
+
+**Section label:** `PEOPLE LIKE YOU`
+
+**Headline:**
+
+```
+Real situations. Real plans.
+No stock photos. No made-up quotes.
+```
+
+**Story cards — 3 cards, horizontal scroll on mobile:**
+
+**Card 1:**
+
+```
+🌱  Saathi · Patna, Bihar
+Age 24 · First job · ₹38,000/month
+
+"I had been putting my salary in a savings account for 8 months
+because I didn't know what else to do. I was too embarrassed to
+ask anyone. I typed my situation into Pausa at 11pm.
+
+By 11:08pm I had a plan. Emergency fund first. Term insurance.
+Then SIP. In that order. With rupee amounts. I finally started."
+```
+
+**Card 2:**
+
+```
+🤝  Saathi · Indore, MP
+Age 29 · Freelancer · Variable income
+
+"Nobody builds financial tools for freelancers. Every calculator
+assumes a fixed monthly salary. I didn't know about advance tax
+until I got a notice.
+
+Pausa was the first thing that understood variable income —
+it asked how much I earned on average and built a plan around
+that. I now keep 30% aside every month. No more notices."
+```
+
+**Card 3:**
+
+```
+🌱  Beej · Delhi · Age 32
+Returned from UAE · NRI becoming resident
+
+"Coming back to India after 6 years, I had no idea about DTAA,
+NRE account conversion, or how my foreign income would be taxed.
+My situation was flagged as complex by Pausa — and instead of
+giving me a wrong answer, it connected me to a SEBI RIA in 2 hours.
+
+That honesty is why I trust this platform."
+```
+
+**Card styling:**
+
+- White card on warm background
+- Top-left: Ring badge (🌱 Beej or 🤝 Saathi in small pill)
+- Top-right: City + age in `--font-mono` small
+- Story text in Lora italic
+- Bottom: a thin saffron underline rule
+- Slight paper shadow (box-shadow with warm tint)
+
+---
+
+### Section 6 — How It Works (3 Steps)
+
+**Section label:** `HOW IT WORKS`
+
+**Headline:**
+
+```
+From confused to clear.
+In under 10 seconds.
+```
+
+**Three steps — large numbered, horizontal on desktop, vertical on mobile:**
+
+```
+01                          02                          03
+Describe your               AI reads your               Get your plan.
+situation.                  situation.                  Act on it.
+
+Type your income,           India-specific AI            A numbered list of
+debts, and goals            analyses: debt,              actions. In order.
+in plain Hindi              savings, tax,                With rupee amounts.
+or English.                 instruments.                 Verified by experts.
+No jargon needed.           8 seconds.                  Free forever.
+```
+
+**Below the 3 steps:** A small disclaimer in `--ink-muted`:
+
+```
+Educational guidance only · Not SEBI-regulated investment advice ·
+All AI plans reviewed by verified CFPs and SEBI RIAs
+```
+
+---
+
+### Section 7 — The Inner Ring System (Trust Architecture)
+
+**Section label:** `THE COMMUNITY`
+
+**Headline:**
+
+```
+Not just a forum.
+A living community
+with real structure.
+```
+
+**Subheadline:**
+
+```
+Pausa has a five-ring membership system where the most
+helpful members earn recognition, real money, and exclusive access.
+Here's who's already inside.
+```
+
+**Visual: Five concentric rings diagram** — SVG, animated on scroll entry (rings draw in one by one from outside to inside).
+
+Beside the diagram, ring descriptions stacked vertically:
+
+```
+👑 Nirmata (निर्माता) · Max 11 · Forever
+   The founding council. Their names are on the wall. Permanent.
+
+🎭 Sutradhaar (सूत्रधार) · Max 51 · Invite only
+   Community architects. Run regional chapters. Revenue share.
+
+🛡️ Sevak (सेवक) · Max 201 · Application required
+   Plan reviewers. Verified contributors. Earn ₹ per review.
+
+🤝 Saathi (साथी) · Unlimited · Earned by helping
+   Active members. FinCoin credits. Free Pro access.
+
+🌱 Beej (बीज) · Everyone
+   Where every member starts. Full of potential.
+```
+
+**Below:** Founding Wall teaser
+
+```
+[                    THE FOUNDING WALL                    ]
+[  9 of 11 Nirmata spots still open. This is your moment. ]
+[              [Become a founding member →]               ]
+```
+
+---
+
+### Section 8 — Trust Signals Bar
+
+A horizontal band. Dark background (`--bg-dark`). Three columns of stats:
+
+```
+27%              800,000+          < 1,000
+of Indians       Indians asking    SEBI RIAs for
+are financially  finance questions  140 crore people.
+literate.        on Reddit —       We're changing
+That's the       with no real      the ratio.
+problem.         answers.
+```
+
+These are not vanity metrics. They are the _problem_ stated as data. Below each stat, one sentence explaining why it matters.
+
+---
+
+### Section 9 — Expert Trust Section
+
+**Section label:** `VERIFIED EXPERTS`
+
+**Headline:**
+
+```
+Every plan reviewed by
+real, verified humans.
+```
+
+**Three expert type cards:**
+
+```
+CFP®                    SEBI RIA                CA
+Certified Financial     Registered              Chartered
+Planner                 Investment Adviser      Accountant
+
+Verified on             Reg. number shown.      For tax,
+FPSB India              Verified on             ITR, GST,
+member directory.       sebi.gov.in             freelance.
+```
+
+**Below cards:**
+
+```
+We verify credentials before any expert appears on the platform.
+We re-verify every year. No unregistered "financial coaches."
+No finfluencers. Only certified professionals.
+```
+
+---
+
+### Section 10 — Final CTA Section
+
+**Full-width, warm dark background. Centered.**
+
+**Large Lora headline:**
+
+```
+The money conversation
+India never had.
+
+We're starting it.
+```
+
+**Hindi version:**
+
+```
+वो पैसों की बात
+जो भारत में कभी नहीं हुई।
+
+हम शुरू कर रहे हैं।
+```
+
+**CTA:**
+
+```
+[Get my free financial plan →]
+
+No account needed · Hindi & English · Takes 2 minutes
+```
+
+**Below CTA, three trust micro-signals in a row:**
+
+```
+🔒 No data sold ever     ✓ SEBI disclaimer on all plans     🇮🇳 Built in Bihar, for Bharat
+```
+
+---
+
+### Section 11 — Footer
+
+Minimal. Three columns.
+
+```
+Pausa                  Legal                    Community
+Born in Bihar.            Privacy Policy           r/personalfinanceindia
+Built for Bharat.         Terms of Service         Twitter @Pausa_in
+                          SEBI Disclaimer          LinkedIn
+                          Grievance Officer:       Hindi Community
+                          grievance@Pausa.in
+```
+
+Bottom bar:
+
+```
+© 2025 Pausa Pvt. Ltd. · Educational platform · Not SEBI-regulated investment advice
+```
+
+---
+
+## Copy Rules (Enforce in All Code)
+
+| ❌ Never write       | ✅ Write instead                          |
+| -------------------- | ----------------------------------------- |
+| "financial advice"   | "financial guidance"                      |
+| "we advise you"      | "based on your situation, consider"       |
+| "best investment"    | "commonly recommended for your situation" |
+| "guaranteed"         | (never say this)                          |
+| "Sign up" (generic)  | "Get my free plan"                        |
+| "Join our community" | "Find people who get it"                  |
+| Stock photo faces    | Illustrated avatars or no photos          |
+| "AI-powered"         | "Built with AI, reviewed by humans"       |
+
+---
+
+## Conversion Logic
+
+**Primary CTA everywhere:** "Get my free financial plan →"
+
+- Saffron background (#e8651a), white text, 16px font, 48px height, pill border-radius
+- On click: goes to `/plan` (the AI intake form) — NO signup wall before the plan
+
+**Secondary CTA (navigation + footer):** "Sign in"
+
+- Ghost button, saffron border, saffron text
+
+**The most important conversion principle:**
+
+> Let the user see the AI plan BEFORE asking them to sign up.
+> The plan is the product demo. Show it first. Ask for account after.
+> Auth wall = only when saving the plan. Not before.
+
+---
+
+## Responsive Breakpoints
+
+```css
+/* Mobile first */
+/* sm: 640px — cards stack, hero text smaller */
+/* md: 768px — 2-column grids appear */
+/* lg: 1024px — full 3-column layouts */
+/* xl: 1280px — max-width container, breathing room */
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+```
+
+**Mobile priorities:**
+
+- Hero headline readable at 320px (clamp font size)
+- Story cards: horizontal scroll, snap scrolling
+- Ring diagram: simplified vertical list (not SVG)
+- CTA button: full width on mobile
+
+---
+
+## Accessibility
+
+- All section labels as real `<h2>` or `<h3>` (not just styled divs)
+- CTA buttons: `aria-label="Get my free financial plan"`
+- Color contrast: all text passes WCAG AA (warm dark on warm light ✓)
+- Hindi text: `lang="hi"` on Hindi copy elements
+- Animated elements: `prefers-reduced-motion` media query stops all animations
+- Alt text on all SVG illustrations
+
+---
+
+## What NOT to Build on This Page
+
+- Login/signup form (goes on `/login`)
+- Dashboard preview screenshots
+- Pricing table (goes on `/pricing`)
+- Blog posts or articles
+- App download badges
+- Cookie banner (handle separately)
+- Live chat widget
+- Pop-ups or modals of any kind
+- Anything that requires the user to be logged in
+
+---
+
+## Implementation Notes
+
+- The Hindi/English toggle: use `useState` in a client component wrapper. Default to browser language detection (`navigator.language`).

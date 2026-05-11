@@ -1,113 +1,155 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Loader2, Bot, User, Upload, Building2, Sparkles, AlertCircle, FileText, X } from "lucide-react";
-import { Navbar } from "@/components/layout/Navbar";
-import { Footer } from "@/components/layout/Footer";
+import {
+  Send, Loader2, Building2, Sparkles, AlertCircle, X,
+  Bookmark, BookmarkCheck, Trash2, Bot, Plus, FileText, PenSquare, BookOpen,
+} from "lucide-react";
+import { AppShell, type NavItem } from "@/components/layout/AppShell";
+import { AIMessage, AITypingIndicator, type AIMessageData } from "@/components/ai/AIMessage";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
-import { sendChatMessage, analyzeFileContent, QUICK_PROMPTS, type ChatMessage } from "@/lib/ai";
+import { sendChatMessage, QUICK_PROMPTS } from "@/lib/ai";
 import { getFinancialProfile } from "@/lib/financial";
 import { getGoals } from "@/lib/goals";
-import { useUser } from "@clerk/clerk-react";
-
-// ── Message bubble ────────────────────────────────────────────────────────────
-function MessageBubble({ msg, isLast }: { msg: ChatMessage & { provider?: string }; isLast: boolean }) {
-  const isUser = msg.role === "user";
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className={`flex gap-3 ${isUser ? "flex-row-reverse" : ""}`}
-    >
-      <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${isUser ? "bg-primary/20 border border-primary/30" : "bg-card border border-white/10"}`}>
-        {isUser ? <User className="w-4 h-4 text-primary" /> : <Bot className="w-4 h-4 text-primary" />}
-      </div>
-      <div className={`max-w-[80%] ${isUser ? "items-end" : "items-start"} flex flex-col gap-1`}>
-        <div className={`rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${isUser ? "bg-primary/15 text-foreground rounded-tr-sm" : "bg-card border border-white/5 text-foreground/90 rounded-tl-sm"}`}>
-          {msg.content}
-        </div>
-        {!isUser && (msg as any).provider && (
-          <span className="text-[10px] text-muted-foreground font-mono px-1">via {(msg as any).provider}</span>
-        )}
-      </div>
-    </motion.div>
-  );
-}
+import { getProfile, createStory, type Profile, type CommunityStory, type RingTier } from "@/lib/community";
+import { isSupabaseConfigured } from "@/lib/supabase";
+import { isClerkConfigured } from "@/lib/clerk-config";
+import { supabase } from "@/lib/supabase";
 
 // ── Chat Tab ──────────────────────────────────────────────────────────────────
 function ChatTab({ userId }: { userId: string }) {
-  const [messages, setMessages] = useState<(ChatMessage & { provider?: string })[]>([
-    { role: "assistant", content: "Hi! I'm Pausa AI, your personal finance advisor. I can help you with budgeting, investments, tax planning, debt management, and more — all tailored to the Indian financial system.\n\nWhat's on your mind? 🌱" },
+  const [messages, setMessages] = useState<AIMessageData[]>([
+    {
+      id: "welcome",
+      role: "assistant",
+      content: "Hi! I'm Pausa AI, your personal finance advisor.\n\nI can help you with budgeting, investments (SIP, ELSS, PPF, NPS), tax planning, emergency funds, debt management, and more — all tailored for India.\n\n**What's on your mind today?** 🌱",
+    },
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [userContext, setUserContext] = useState<{ income?: number; expenses?: number; goals?: string[] } | undefined>();
+  const [attachedFile, setAttachedFile] = useState<File | null>(null);
+  const [fileAnalyzing, setFileAnalyzing] = useState(false);
+  const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
+  const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
+  const [dislikedIds, setDislikedIds] = useState<Set<string>>(new Set());
+  const [userContext, setUserContext] = useState<{ income?: number; expenses?: number; goals?: string[] }>();
   const bottomRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const sessionId = useRef(`session_${Date.now()}`);
 
   useEffect(() => {
-    // Load financial context for richer advice
     Promise.all([getFinancialProfile(userId), getGoals(userId)]).then(([fp, goals]) => {
       if (fp) {
         const expenses = fp.housing_expense + fp.food_expense + fp.transport_expense + fp.utilities_expense + fp.insurance_expense + fp.entertainment_expense + fp.other_expense;
-        setUserContext({
-          income: fp.monthly_income,
-          expenses,
-          goals: goals.filter((g) => !g.is_completed).map((g) => g.name),
-        });
+        setUserContext({ income: fp.monthly_income, expenses, goals: goals.filter((g) => !g.is_completed).map((g) => g.name) });
       }
     });
   }, [userId]);
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
 
-  const send = async (text?: string) => {
+  const recordTraining = async (msg: AIMessageData, label: "liked" | "disliked" | null, saved = false) => {
+    if (!isSupabaseConfigured || !supabase) return;
+    const prompt = messages.findLast((m) => m.role === "user")?.content ?? "";
+    await supabase.from("ai_training_data").upsert({
+      user_id: userId, session_id: sessionId.current,
+      prompt, response: msg.content, provider: msg.provider,
+      label, saved, context: userContext ?? {},
+    }, { onConflict: "id" });
+  };
+
+  const handleSave = async (msg: AIMessageData) => {
+    if (savedIds.has(msg.id)) {
+      setSavedIds((prev) => { const s = new Set(prev); s.delete(msg.id); return s; });
+    } else {
+      setSavedIds((prev) => new Set([...prev, msg.id]));
+      if (isSupabaseConfigured && supabase) {
+        const prompt = messages.findLast((m) => m.role === "user")?.content ?? "";
+        await supabase.from("ai_saved_responses").insert({
+          user_id: userId, session_id: sessionId.current,
+          prompt, response: msg.content, provider: msg.provider,
+        });
+      }
+      await recordTraining(msg, null, true);
+    }
+  };
+
+  const handleLike = async (msg: AIMessageData) => {
+    if (likedIds.has(msg.id)) { setLikedIds((prev) => { const s = new Set(prev); s.delete(msg.id); return s; }); return; }
+    setLikedIds((prev) => new Set([...prev, msg.id]));
+    setDislikedIds((prev) => { const s = new Set(prev); s.delete(msg.id); return s; });
+    await recordTraining(msg, "liked");
+  };
+
+  const handleDislike = async (msg: AIMessageData) => {
+    if (dislikedIds.has(msg.id)) { setDislikedIds((prev) => { const s = new Set(prev); s.delete(msg.id); return s; }); return; }
+    setDislikedIds((prev) => new Set([...prev, msg.id]));
+    setLikedIds((prev) => { const s = new Set(prev); s.delete(msg.id); return s; });
+    await recordTraining(msg, "disliked");
+  };
+
+  const sendMessage = async (text?: string) => {
     const content = (text ?? input).trim();
-    if (!content || loading) return;
+    if ((!content && !attachedFile) || loading) return;
     setInput("");
 
-    const userMsg: ChatMessage = { role: "user", content };
-    setMessages((prev) => [...prev, userMsg]);
+    let finalContent = content;
+    if (attachedFile) {
+      setFileAnalyzing(true);
+      const fileText = await attachedFile.text().catch(() => "");
+      finalContent = content
+        ? `${content}\n\n[Attached: ${attachedFile.name}]\n${fileText.slice(0, 3000)}`
+        : `Please analyze this financial document: ${attachedFile.name}\n\n${fileText.slice(0, 3000)}`;
+      setAttachedFile(null);
+      setFileAnalyzing(false);
+    }
+
+    const userMsg: AIMessageData = { id: `u_${Date.now()}`, role: "user", content: finalContent };
+    const allMessages = [...messages, userMsg];
+    setMessages(allMessages);
     setLoading(true);
 
-    const history = [...messages, userMsg].filter((m) => m.role === "user" || m.role === "assistant") as ChatMessage[];
+    const history = allMessages.map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
     const result = await sendChatMessage(history, userContext);
+    const aiMsg: AIMessageData = {
+      id: `a_${Date.now()}`, role: "assistant", content: result.message, provider: result.provider,
+    };
+    setMessages((prev) => [...prev, aiMsg]);
     setLoading(false);
-    setMessages((prev) => [...prev, { role: "assistant", content: result.message, provider: result.provider }]);
+  };
+
+  const handleFileSelect = (file: File) => {
+    if (file.size > 5 * 1024 * 1024) { alert("File too large. Max 5 MB."); return; }
+    setAttachedFile(file);
   };
 
   return (
-    <div className="flex flex-col h-[600px]">
+    <div className="flex flex-col h-full">
       {userContext?.income && (
-        <div className="flex items-center gap-2 bg-primary/5 border border-primary/15 rounded-xl px-3 py-2 mb-4 text-xs text-muted-foreground">
-          <Sparkles className="w-3.5 h-3.5 text-primary shrink-0" />
-          Financial context loaded — advice will be personalised to your profile.
+        <div className="flex items-center gap-2 bg-primary/5 border-b border-primary/10 px-5 py-2 text-xs text-muted-foreground shrink-0">
+          <Sparkles className="w-3 h-3 text-primary" />
+          Advice personalised to your ₹{userContext.income.toLocaleString("en-IN")}/mo profile
         </div>
       )}
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto space-y-4 pr-1 mb-4">
-        {messages.map((msg, i) => <MessageBubble key={i} msg={msg} isLast={i === messages.length - 1} />)}
-        {loading && (
-          <div className="flex gap-3">
-            <div className="w-8 h-8 rounded-full bg-card border border-white/10 flex items-center justify-center shrink-0">
-              <Bot className="w-4 h-4 text-primary" />
-            </div>
-            <div className="bg-card border border-white/5 rounded-2xl rounded-tl-sm px-4 py-3">
-              <div className="flex gap-1 items-center">
-                <span className="w-1.5 h-1.5 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                <span className="w-1.5 h-1.5 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                <span className="w-1.5 h-1.5 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
-              </div>
-            </div>
-          </div>
-        )}
+      <div className="flex-1 overflow-y-auto px-5 py-5 space-y-1">
+        {messages.map((msg, i) => (
+          <AIMessage key={msg.id} message={{ ...msg, isSaved: savedIds.has(msg.id), isLiked: likedIds.has(msg.id), isDisliked: dislikedIds.has(msg.id) }}
+            index={i}
+            onSave={msg.role === "assistant" ? () => handleSave(msg) : undefined}
+            onLike={msg.role === "assistant" ? () => handleLike(msg) : undefined}
+            onDislike={msg.role === "assistant" ? () => handleDislike(msg) : undefined}
+          />
+        ))}
+        {(loading || fileAnalyzing) && <AITypingIndicator />}
         <div ref={bottomRef} />
       </div>
 
       {/* Quick prompts */}
       {messages.length <= 1 && (
-        <div className="flex flex-wrap gap-2 mb-3">
-          {QUICK_PROMPTS.map((p) => (
-            <button key={p} onClick={() => send(p)}
+        <div className="px-5 pb-3 flex flex-wrap gap-2">
+          {QUICK_PROMPTS.slice(0, 4).map((p) => (
+            <button key={p} onClick={() => sendMessage(p)}
               className="text-xs px-3 py-1.5 rounded-full border border-white/10 text-muted-foreground hover:border-primary/30 hover:text-primary transition-colors">
               {p}
             </button>
@@ -115,101 +157,45 @@ function ChatTab({ userId }: { userId: string }) {
         </div>
       )}
 
-      {/* Input */}
-      <div className="flex gap-2">
-        <input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && (e.preventDefault(), send())}
-          placeholder="Ask anything about your finances..."
-          className="flex-1 bg-card border border-white/8 rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/40 transition-colors"
-          disabled={loading}
-        />
-        <button onClick={() => send()} disabled={!input.trim() || loading}
-          className="w-10 h-10 flex items-center justify-center bg-primary rounded-xl text-[#0A0A0C] hover:bg-primary/90 transition-colors disabled:opacity-40">
-          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-        </button>
-      </div>
-    </div>
-  );
-}
+      {/* Attached file chip */}
+      {attachedFile && (
+        <div className="px-5 pb-1">
+          <div className="inline-flex items-center gap-2 bg-primary/10 border border-primary/20 rounded-full px-3 py-1.5 text-xs text-primary">
+            <FileText className="w-3.5 h-3.5" />
+            <span className="truncate max-w-[180px]">{attachedFile.name}</span>
+            <button onClick={() => setAttachedFile(null)} className="ml-1 hover:text-white"><X className="w-3 h-3" /></button>
+          </div>
+        </div>
+      )}
 
-// ── Upload Tab ────────────────────────────────────────────────────────────────
-function UploadTab({ userId }: { userId: string }) {
-  const [file, setFile] = useState<File | null>(null);
-  const [analyzing, setAnalyzing] = useState(false);
-  const [result, setResult] = useState<string | null>(null);
-  const [error, setError] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  const handleFile = async (f: File) => {
-    setFile(f);
-    setResult(null);
-    setError("");
-    setAnalyzing(true);
-
-    try {
-      const text = await f.text();
-      const res = await analyzeFileContent(f.name, text);
-      if (res.error) setError(res.error);
-      else setResult(res.message);
-    } catch (e) {
-      setError("Failed to read the file. Try a plain-text CSV or TXT statement.");
-    }
-    setAnalyzing(false);
-  };
-
-  return (
-    <div className="space-y-5">
-      <p className="text-sm text-muted-foreground">Upload your bank statement (CSV or TXT format) and get instant AI analysis of your spending patterns.</p>
-
-      {/* Drop zone */}
-      <div
-        onClick={() => inputRef.current?.click()}
-        onDragOver={(e) => e.preventDefault()}
-        onDrop={(e) => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleFile(f); }}
-        className="border-2 border-dashed border-white/10 rounded-2xl p-10 text-center cursor-pointer hover:border-primary/30 hover:bg-primary/5 transition-all"
-      >
-        <input ref={inputRef} type="file" accept=".csv,.txt,.pdf" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
-        <Upload className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
-        <p className="text-sm font-medium text-foreground mb-1">Drop your statement here</p>
-        <p className="text-xs text-muted-foreground">Supports CSV, TXT (exported from net banking)</p>
-        <p className="text-[11px] text-muted-foreground/50 mt-2">Your data never leaves your browser — analysis happens locally.</p>
-      </div>
-
-      {file && (
-        <div className="flex items-center gap-3 bg-card border border-white/5 rounded-xl px-4 py-3">
-          <FileText className="w-4 h-4 text-primary shrink-0" />
-          <span className="text-sm flex-1 truncate">{file.name}</span>
-          <button onClick={() => { setFile(null); setResult(null); setError(""); }} className="text-muted-foreground hover:text-foreground">
-            <X className="w-4 h-4" />
+      {/* Input bar */}
+      <div className="px-5 pb-5 pt-2 shrink-0">
+        <input ref={fileInputRef} type="file" accept=".csv,.txt,.pdf" className="hidden"
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileSelect(f); e.target.value = ""; }} />
+        <div className="flex items-end gap-2 bg-card border border-white/8 rounded-2xl px-3 py-2.5 focus-within:border-primary/30 transition-colors">
+          {/* + file attach */}
+          <button onClick={() => fileInputRef.current?.click()}
+            className="p-1 text-muted-foreground hover:text-primary transition-colors shrink-0 mb-0.5">
+            <Plus className="w-5 h-5" />
+          </button>
+          <textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && (e.preventDefault(), sendMessage())}
+            placeholder="Ask anything about your finances..."
+            rows={1}
+            className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none resize-none leading-relaxed max-h-32"
+            style={{ minHeight: "24px" }}
+          />
+          <button onClick={() => sendMessage()} disabled={(!input.trim() && !attachedFile) || loading}
+            className="p-1.5 bg-primary rounded-lg text-[#0A0A0C] hover:bg-primary/90 transition-colors disabled:opacity-40 shrink-0">
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
           </button>
         </div>
-      )}
-
-      {analyzing && (
-        <div className="flex items-center gap-3 text-sm text-muted-foreground">
-          <Loader2 className="w-4 h-4 animate-spin text-primary" />
-          Analyzing your statement with AI...
-        </div>
-      )}
-
-      {error && (
-        <div className="flex items-start gap-2 bg-red-500/10 border border-red-500/20 rounded-xl p-3">
-          <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
-          <p className="text-xs text-red-400">{error}</p>
-        </div>
-      )}
-
-      {result && (
-        <div className="bg-card border border-white/5 rounded-2xl p-5">
-          <div className="flex items-center gap-2 mb-3">
-            <Bot className="w-4 h-4 text-primary" />
-            <span className="text-sm font-semibold text-primary">AI Analysis</span>
-          </div>
-          <p className="text-sm text-foreground/85 leading-relaxed whitespace-pre-wrap">{result}</p>
-        </div>
-      )}
+        <p className="text-[10px] text-muted-foreground/40 text-center mt-1.5">
+          Educational guidance only · Not regulated financial advice · Shift+Enter for new line
+        </p>
+      </div>
     </div>
   );
 }
@@ -217,92 +203,200 @@ function UploadTab({ userId }: { userId: string }) {
 // ── Bank Link Tab ─────────────────────────────────────────────────────────────
 function BankLinkTab() {
   return (
-    <div className="text-center py-12">
-      <div className="w-16 h-16 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mx-auto mb-5">
+    <div className="p-6 text-center flex flex-col items-center justify-center h-full max-w-md mx-auto">
+      <div className="w-16 h-16 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mb-5">
         <Building2 className="w-8 h-8 text-primary" />
       </div>
       <h3 className="text-lg font-display font-bold mb-2">Account Aggregator — Coming Soon</h3>
-      <p className="text-muted-foreground text-sm max-w-sm mx-auto leading-relaxed mb-6">
-        Pausa will use India's RBI-regulated <strong>Account Aggregator (AA)</strong> framework to securely link your bank accounts — zero password sharing, consent-based data access.
+      <p className="text-muted-foreground text-sm leading-relaxed mb-6">
+        Pausa will use India's RBI-regulated Account Aggregator framework to securely read your bank data — zero password sharing, consent-based.
       </p>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-lg mx-auto text-left">
+      <div className="grid grid-cols-1 gap-3 w-full text-left">
         {[
-          { icon: "🏦", title: "Connect once", desc: "Link all accounts via AA in one flow" },
-          { icon: "🔒", title: "You control data", desc: "Revoke access any time, no data stored" },
-          { icon: "🤖", title: "Auto-analysis", desc: "AI reads transactions, builds your vitality score" },
+          { icon: "🏦", title: "Link once", desc: "Connect all accounts via AA in one flow" },
+          { icon: "🔒", title: "You control everything", desc: "Revoke access any time. No data stored." },
+          { icon: "🤖", title: "Auto-analysis", desc: "AI reads transactions, builds your plan" },
         ].map((item) => (
-          <div key={item.title} className="glass-panel rounded-xl p-4">
-            <span className="text-2xl block mb-2">{item.icon}</span>
-            <p className="text-sm font-semibold mb-1">{item.title}</p>
-            <p className="text-xs text-muted-foreground">{item.desc}</p>
+          <div key={item.title} className="glass-panel rounded-xl p-4 flex gap-3 items-start">
+            <span className="text-2xl shrink-0">{item.icon}</span>
+            <div><p className="text-sm font-semibold mb-0.5">{item.title}</p><p className="text-xs text-muted-foreground">{item.desc}</p></div>
           </div>
         ))}
       </div>
-      <div className="mt-8">
+      <div className="mt-6">
         <span className="inline-flex items-center gap-2 text-xs text-muted-foreground bg-card border border-white/5 px-4 py-2 rounded-full">
-          <span className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse" />
-          Integration in development — join the waitlist on the home page
+          <span className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse" />In development — join waitlist on landing page
         </span>
       </div>
     </div>
   );
 }
 
-// ── Main Page ─────────────────────────────────────────────────────────────────
-function AIAdvisorInner() {
-  const { user } = useUser();
-  const [tab, setTab] = useState<"chat" | "upload" | "bank">("chat");
+// ── Story Tab ─────────────────────────────────────────────────────────────────
+function StoryTab({ userId, profile }: { userId: string; profile: Profile | null }) {
+  const [form, setForm] = useState({ title: "", situation: "", challenge: "", action: "", result: "" });
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState("");
 
-  const TABS = [
-    { id: "chat",   label: "💬 Chat",           desc: "Ask anything about money" },
-    { id: "upload", label: "📁 Upload Statement", desc: "Analyze bank statement" },
-    { id: "bank",   label: "🏦 Link Account",    desc: "Coming soon" },
-  ] as const;
+  const update = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLTextAreaElement | HTMLInputElement>) =>
+    setForm((f) => ({ ...f, [k]: e.target.value }));
+
+  const handleSubmit = async () => {
+    if (!form.title || !form.situation || !form.challenge || !form.action || !form.result) {
+      setError("Fill all fields to complete your story."); return;
+    }
+    setSubmitting(true);
+    const { error: err } = await createStory(userId, { ...form, ring_tier: (profile?.ring_tier ?? 1) as RingTier, tags: [] });
+    setSubmitting(false);
+    if (err) { setError(err); return; }
+    setSubmitted(true);
+  };
+
+  if (submitted) return (
+    <div className="flex flex-col items-center justify-center h-full p-6 text-center">
+      <span className="text-5xl mb-4">🌱</span>
+      <h3 className="text-xl font-display font-bold mb-2">Story Shared!</h3>
+      <p className="text-muted-foreground text-sm">Your story will inspire others in the community.</p>
+    </div>
+  );
+
+  const fields = [
+    { key: "title" as const,     label: "Story Title",    placeholder: "e.g. How I paid off ₹3L in 18 months" },
+    { key: "situation" as const, label: "My Situation",   placeholder: "I was 26, earning ₹45k, with credit card debt..." },
+    { key: "challenge" as const, label: "The Challenge",  placeholder: "The hardest part was..." },
+    { key: "action" as const,    label: "What I Did",     placeholder: "I started by..." },
+    { key: "result" as const,    label: "The Result",     placeholder: "Now I... and I feel..." },
+  ];
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <Navbar />
-      <main className="max-w-3xl mx-auto px-4 sm:px-6 pt-24 md:pt-28 pb-24">
-        {/* Header */}
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-          <div className="flex items-start gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-primary/15 border border-primary/25 flex items-center justify-center shrink-0">
-              <Bot className="w-6 h-6 text-primary" />
+    <div className="p-6 overflow-y-auto h-full">
+      <div className="max-w-lg">
+        <div className="mb-6">
+          <h2 className="text-xl font-display font-bold mb-1">Share Your Story</h2>
+          <p className="text-sm text-muted-foreground">Stories in 4 acts: Situation → Challenge → Action → Result. Be specific. Be honest. It helps others.</p>
+        </div>
+        <div className="space-y-4">
+          {fields.map((f) => (
+            <div key={f.key}>
+              <label className="block text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1.5">{f.label}</label>
+              {f.key === "title" ? (
+                <input value={form[f.key]} onChange={update(f.key)} placeholder={f.placeholder}
+                  className="w-full bg-card border border-white/8 rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/40" />
+              ) : (
+                <textarea value={form[f.key]} onChange={update(f.key)} placeholder={f.placeholder} rows={3}
+                  className="w-full bg-card border border-white/8 rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/40 resize-none" />
+              )}
             </div>
-            <div>
-              <h1 className="text-2xl md:text-3xl font-display font-bold mb-1">Pausa AI Advisor</h1>
-              <p className="text-muted-foreground text-sm">Your personal finance coach — powered by Gemini AI with Anthropic fallback.</p>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Tabs */}
-        <div className="flex items-center gap-1 bg-card border border-white/5 rounded-xl p-1 mb-6">
-          {TABS.map((t) => (
-            <button key={t.id} onClick={() => setTab(t.id)}
-              className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${tab === t.id ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground"}`}>
-              <span className="hidden sm:inline">{t.label}</span>
-              <span className="sm:hidden">{t.label.split(" ")[0]}</span>
-            </button>
           ))}
+          {error && <p className="text-xs text-red-400">{error}</p>}
+          <button onClick={handleSubmit} disabled={submitting}
+            className="w-full flex items-center justify-center gap-2 bg-primary text-[#0A0A0C] font-semibold py-3 rounded-xl text-sm hover:bg-primary/90 disabled:opacity-50">
+            {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <PenSquare className="w-4 h-4" />}
+            Share My Story
+          </button>
         </div>
-
-        {/* Content */}
-        <div className="glass-panel rounded-2xl p-5 md:p-6">
-          <AnimatePresence mode="wait">
-            {tab === "chat"   && <motion.div key="chat"   initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}><ChatTab userId={user!.id} /></motion.div>}
-            {tab === "upload" && <motion.div key="upload" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}><UploadTab userId={user!.id} /></motion.div>}
-            {tab === "bank"   && <motion.div key="bank"   initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}><BankLinkTab /></motion.div>}
-          </AnimatePresence>
-        </div>
-
-        {/* Disclaimer */}
-        <p className="text-[11px] text-muted-foreground/50 text-center mt-4">
-          Pausa AI provides educational guidance only, not regulated financial advice. Consult a SEBI-registered investment adviser for personalised recommendations.
-        </p>
-      </main>
-      <Footer />
+      </div>
     </div>
+  );
+}
+
+// ── Saved Responses Tab ───────────────────────────────────────────────────────
+function SavedResponsesTab({ userId }: { userId: string }) {
+  const [saved, setSaved] = useState<{ id: string; prompt: string; response: string; provider: string; created_at: string }[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured || !supabase) { setLoading(false); return; }
+    supabase.from("ai_saved_responses").select("*").eq("user_id", userId).order("created_at", { ascending: false }).limit(20)
+      .then(({ data }) => { setSaved((data as any) ?? []); setLoading(false); });
+  }, [userId]);
+
+  const handleDelete = async (id: string) => {
+    if (!supabase) return;
+    await supabase.from("ai_saved_responses").delete().eq("id", id);
+    setSaved((prev) => prev.filter((r) => r.id !== id));
+  };
+
+  if (loading) return <div className="flex items-center justify-center h-full"><Loader2 className="w-6 h-6 text-primary animate-spin" /></div>;
+
+  if (saved.length === 0) return (
+    <div className="flex flex-col items-center justify-center h-full text-center p-6">
+      <Bookmark className="w-12 h-12 text-muted-foreground/30 mb-3" />
+      <h3 className="font-display font-bold mb-1">No saved responses yet</h3>
+      <p className="text-sm text-muted-foreground">Hover any AI response and click the bookmark icon to save it here.</p>
+    </div>
+  );
+
+  return (
+    <div className="p-5 space-y-4 overflow-y-auto h-full">
+      <h2 className="text-base font-display font-bold text-muted-foreground uppercase tracking-widest">Saved Responses</h2>
+      {saved.map((r) => (
+        <div key={r.id} className="glass-panel rounded-2xl p-4">
+          {r.prompt && <p className="text-xs text-muted-foreground/70 mb-2 line-clamp-1">Q: {r.prompt}</p>}
+          <p className="text-sm text-foreground/85 leading-relaxed line-clamp-5">{r.response}</p>
+          <div className="flex items-center justify-between mt-3 pt-2 border-t border-white/5">
+            <span className="text-[10px] font-mono text-muted-foreground">{new Date(r.created_at).toLocaleDateString("en-IN")}</span>
+            <button onClick={() => handleDelete(r.id)} className="text-muted-foreground hover:text-red-400 transition-colors">
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Main AI Advisor ───────────────────────────────────────────────────────────
+function AIAdvisorInner() {
+  const { user } = isClerkConfigured ? require("@clerk/clerk-react").useUser() : { user: null };
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [activeItem, setActiveItem] = useState("chat");
+
+  useEffect(() => {
+    if (user) getProfile(user.id).then(setProfile);
+  }, [user]);
+
+  const navItems: NavItem[] = [
+    { id: "chat",   label: "Chat",           icon: <Bot className="w-4 h-4" /> },
+    { id: "story",  label: "My Story",       icon: <PenSquare className="w-4 h-4" />, dividerAbove: true },
+    { id: "saved",  label: "Saved Responses",icon: <Bookmark className="w-4 h-4" /> },
+    { id: "bank",   label: "Link Account",   icon: <Building2 className="w-4 h-4" />, dividerAbove: true },
+  ];
+
+  return (
+    <AppShell
+      navItems={navItems}
+      activeItem={activeItem}
+      onNavSelect={setActiveItem}
+      profile={profile}
+      sectionTitle="AI Advisor"
+    >
+      <div className="h-full flex flex-col">
+        <AnimatePresence mode="wait">
+          {activeItem === "chat" && (
+            <motion.div key="chat" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 flex flex-col min-h-0 h-full">
+              <ChatTab userId={user?.id ?? "guest"} />
+            </motion.div>
+          )}
+          {activeItem === "story" && (
+            <motion.div key="story" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 overflow-hidden">
+              <StoryTab userId={user?.id ?? "guest"} profile={profile} />
+            </motion.div>
+          )}
+          {activeItem === "saved" && (
+            <motion.div key="saved" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 overflow-hidden">
+              <SavedResponsesTab userId={user?.id ?? "guest"} />
+            </motion.div>
+          )}
+          {activeItem === "bank" && (
+            <motion.div key="bank" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 overflow-hidden">
+              <BankLinkTab />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </AppShell>
   );
 }
 
