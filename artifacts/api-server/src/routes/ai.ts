@@ -1,6 +1,7 @@
+import dotenv from "dotenv";
 import { Router } from "express";
-
 const router = Router();
+dotenv.config();
 
 const GEMINI_KEY = process.env.GEMINI_API_KEY ?? "";
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY ?? "";
@@ -23,7 +24,7 @@ async function callGemini(messages: ChatMessage[], systemPrompt: string): Promis
   };
 
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`,
     { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }
   );
 
@@ -80,7 +81,8 @@ router.post("/ai/chat", async (req, res) => {
     return;
   }
 
-  const sys = systemPrompt ?? "You are a helpful financial assistant.";
+  // const sys = systemPrompt ?? "You are a helpful financial assistant.";
+  const sys = "As Chief Financial Planner. analyze this pdf or text or image and then give detail analyze to user to achieve financial stability."
 
   // Try Gemini first, then Anthropic
   if (GEMINI_KEY) {

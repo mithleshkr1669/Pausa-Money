@@ -1,9 +1,8 @@
 import { Link } from "wouter";
 import { isClerkConfigured } from "@/lib/clerk-config";
 import { KeyRound } from "lucide-react";
-
+import { SignUp } from "@clerk/clerk-react";
 function ClerkSignUp() {
-  const { SignUp } = require("@clerk/clerk-react");
   return (
     <SignUp
       routing="path"
@@ -25,10 +24,12 @@ function ClerkSignUp() {
         elements: {
           card: "shadow-2xl border border-white/8",
           headerTitle: "font-display",
-          formButtonPrimary: "bg-primary! text-[#0A0A0C]! font-semibold! hover:opacity-90!",
+          formButtonPrimary:
+            "bg-primary! text-[#0A0A0C]! font-semibold! hover:opacity-90!",
           footerActionLink: "text-primary! hover:text-primary/80!",
           identityPreviewEditButton: "text-primary!",
-          formFieldInput: "border-white/10! focus:border-primary/50! bg-[#1A1A1D]!",
+          formFieldInput:
+            "border-white/10! focus:border-primary/50! bg-[#1A1A1D]!",
           dividerLine: "bg-white/10!",
         },
       }}
@@ -44,22 +45,45 @@ export default function SignUpPage() {
       <div className="relative z-10 w-full flex flex-col items-center">
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2 mb-6">
-            <img src="/pausa-logo.png" alt="Pausa" className="h-10 w-10 rounded-lg" />
-            <span className="font-display font-bold text-2xl text-foreground">Pausa</span>
+            <img
+              src="/pausa-logo.png"
+              alt="Pausa"
+              className="h-10 w-10 rounded-lg"
+            />
+            <span className="font-display font-bold text-2xl text-foreground">
+              Pausa
+            </span>
           </Link>
-          <p className="text-muted-foreground text-sm">Join the community — start as a <span className="text-primary font-medium">Seed 🌱</span></p>
+          <p className="text-muted-foreground text-sm">
+            Join the community — start as a{" "}
+            <span className="text-primary font-medium">Seed 🌱</span>
+          </p>
         </div>
-        {isClerkConfigured ? <ClerkSignUp /> : (
+        {isClerkConfigured ? (
+          <ClerkSignUp />
+        ) : (
           <div className="glass-panel rounded-2xl p-8 max-w-md w-full text-center">
             <div className="w-16 h-16 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mx-auto mb-6">
               <KeyRound className="w-8 h-8 text-primary" />
             </div>
-            <h2 className="text-xl font-display font-bold mb-3">Setup Required</h2>
+            <h2 className="text-xl font-display font-bold mb-3">
+              Setup Required
+            </h2>
             <p className="text-muted-foreground text-sm leading-relaxed mb-6">
-              Add <code className="bg-card border border-white/10 px-1.5 py-0.5 rounded text-primary text-xs">VITE_CLERK_PUBLISHABLE_KEY</code> to your <code className="bg-card border border-white/10 px-1.5 py-0.5 rounded text-primary text-xs">.env</code> file to enable sign up.
+              Add{" "}
+              <code className="bg-card border border-white/10 px-1.5 py-0.5 rounded text-primary text-xs">
+                VITE_CLERK_PUBLISHABLE_KEY
+              </code>{" "}
+              to your{" "}
+              <code className="bg-card border border-white/10 px-1.5 py-0.5 rounded text-primary text-xs">
+                .env
+              </code>{" "}
+              file to enable sign up.
             </p>
             <Link href="/">
-              <button className="text-sm text-primary hover:underline">← Back to landing page</button>
+              <button className="text-sm text-primary hover:underline">
+                ← Back to landing page
+              </button>
             </Link>
           </div>
         )}

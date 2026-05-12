@@ -76,6 +76,7 @@
   },
   "dependencies": {
     "@clerk/clerk-react": "^5.61.3",
-    "@supabase/supabase-js": "^2.105.4"
+    "@supabase/supabase-js": "^2.105.4",
+    "pdfjs-dist": "^5.7.284"
   }
 }

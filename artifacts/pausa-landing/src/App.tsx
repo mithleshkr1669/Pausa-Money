@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ClerkProvider } from "@clerk/clerk-react";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { ErrorBoundary } from "@/components/error/ErrorBoundary";
 import { CLERK_PUBLISHABLE_KEY, isClerkConfigured } from "@/lib/clerk-config";
 import Home from "@/pages/Home";
 import SignInPage from "@/pages/SignIn";
@@ -54,10 +55,16 @@ function AppCore() {
 export default function App() {
   if (isClerkConfigured) {
     return (
-      <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY}>
-        <AppCore />
-      </ClerkProvider>
+      <ErrorBoundary>
+        <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY}>
+          <AppCore />
+        </ClerkProvider>
+      </ErrorBoundary>
     );
   }
-  return <AppCore />;
+  return (
+    <ErrorBoundary>
+      <AppCore />
+    </ErrorBoundary>
+  );
 }

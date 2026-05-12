@@ -1,9 +1,9 @@
 import { Link } from "wouter";
 import { isClerkConfigured } from "@/lib/clerk-config";
 import { KeyRound } from "lucide-react";
+import { SignIn } from "@clerk/clerk-react";
 
 function ClerkSignIn() {
-  const { SignIn } = require("@clerk/clerk-react");
   return (
     <SignIn
       routing="path"
@@ -25,10 +25,12 @@ function ClerkSignIn() {
         elements: {
           card: "shadow-2xl border border-white/8",
           headerTitle: "font-display",
-          formButtonPrimary: "bg-primary! text-[#0A0A0C]! font-semibold! hover:opacity-90!",
+          formButtonPrimary:
+            "bg-primary! text-[#0A0A0C]! font-semibold! hover:opacity-90!",
           footerActionLink: "text-primary! hover:text-primary/80!",
           identityPreviewEditButton: "text-primary!",
-          formFieldInput: "border-white/10! focus:border-primary/50! bg-[#1A1A1D]!",
+          formFieldInput:
+            "border-white/10! focus:border-primary/50! bg-[#1A1A1D]!",
           dividerLine: "bg-white/10!",
         },
       }}
@@ -45,7 +47,9 @@ function NotConfigured() {
       <h2 className="text-xl font-display font-bold mb-3">Setup Required</h2>
       <p className="text-muted-foreground text-sm leading-relaxed mb-6">
         Add your Clerk publishable key to the{" "}
-        <code className="bg-card border border-white/10 px-1.5 py-0.5 rounded text-primary text-xs">.env</code>{" "}
+        <code className="bg-card border border-white/10 px-1.5 py-0.5 rounded text-primary text-xs">
+          .env
+        </code>{" "}
         file to enable authentication.
       </p>
       <div className="bg-card border border-white/5 rounded-xl p-4 text-left font-mono text-xs text-muted-foreground mb-6 leading-relaxed">
@@ -55,7 +59,9 @@ function NotConfigured() {
         <p>VITE_SUPABASE_ANON_KEY=eyJ...</p>
       </div>
       <Link href="/">
-        <button className="text-sm text-primary hover:underline">← Back to landing page</button>
+        <button className="text-sm text-primary hover:underline">
+          ← Back to landing page
+        </button>
       </Link>
     </div>
   );
@@ -69,10 +75,18 @@ export default function SignInPage() {
       <div className="relative z-10 w-full flex flex-col items-center">
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2 mb-6">
-            <img src="/pausa-logo.png" alt="Pausa" className="h-10 w-10 rounded-lg" />
-            <span className="font-display font-bold text-2xl text-foreground">Pausa</span>
+            <img
+              src="/pausa-logo.png"
+              alt="Pausa"
+              className="h-10 w-10 rounded-lg"
+            />
+            <span className="font-display font-bold text-2xl text-foreground">
+              Pausa
+            </span>
           </Link>
-          <p className="text-muted-foreground text-sm">Sign in to access your dashboard</p>
+          <p className="text-muted-foreground text-sm">
+            Sign in to access your dashboard
+          </p>
         </div>
         {isClerkConfigured ? <ClerkSignIn /> : <NotConfigured />}
       </div>
