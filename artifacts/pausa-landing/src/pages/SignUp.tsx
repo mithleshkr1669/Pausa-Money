@@ -46,7 +46,7 @@ export default function SignUpPage() {
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2 mb-6">
             <img
-              src="/pausa-logo.png"
+              src="/image.png"
               alt="Pausa"
               className="h-10 w-10 rounded-lg"
             />

@@ -246,6 +246,14 @@ function HomeNav({
 // ── Hero ──────────────────────────────────────────────────────────────────────
 function Hero() {
   const [activeChat, setActiveChat] = useState(0);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop =
+        chatContainerRef.current.scrollHeight;
+    }
+  }, [activeChat]);
   const chatMsgs = [
     {
       role: "user",
@@ -378,7 +386,10 @@ function Hero() {
               </div>
 
               {/* Chat bubbles */}
-              <div className="space-y-3 min-h-[220px]">
+              <div
+                ref={chatContainerRef}
+                className="space-y-3 h-[220px] overflow-auto"
+              >
                 <AnimatePresence>
                   {chatMsgs.slice(0, activeChat + 1).map((msg, i) => (
                     <motion.div
@@ -773,7 +784,7 @@ function Community() {
               ))}
             </div>
 
-            <div className="border border-[#00E5D4]/15 rounded-2xl p-5 bg-[#00E5D4]/[0.04]">
+            {/* <div className="border border-[#00E5D4]/15 rounded-2xl p-5 bg-[#00E5D4]/[0.04]">
               <p className="font-mono text-xs text-[#00E5D4]/60 uppercase tracking-widest mb-2">
                 The Founding Wall
               </p>
@@ -794,7 +805,7 @@ function Community() {
                   Become a founding member →
                 </button>
               </Link>
-            </div>
+            </div> */}
           </div>
 
           {/* Right — Ring list */}
@@ -1255,6 +1266,7 @@ function Footer() {
 // ── Main ──────────────────────────────────────────────────────────────────────
 export default function Home() {
   const [lang, setLang] = useState<Lang>("en");
+  const bottomRef = useRef<HTMLDivElement>(null);
   return (
     <div className="font-jakarta bg-[#09090f] min-h-screen">
       <HomeNav lang={lang} setLang={setLang} />

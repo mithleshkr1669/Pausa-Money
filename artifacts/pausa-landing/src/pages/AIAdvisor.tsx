@@ -45,7 +45,7 @@ function ChatTab({ userId }: { userId: string }) {
       id: "welcome",
       role: "assistant",
       content:
-        "Hi! I'm Pausa AI, your personal finance advisor.\n\nI can help you with budgeting, investments (SIP, ELSS, PPF, NPS), tax planning, emergency funds, debt management, and more — all tailored for India.\n\n**What's on your mind today?** 🌱",
+        "Hi! I'm Pausa AI, your personal finance educator.\n\nI can help you with budgeting, investments (SIP, ELSS, PPF, NPS), tax planning, emergency funds, debt management, and more — all tailored for India.\n\n**What's on your mind today?** 🌱",
     },
   ]);
   const [input, setInput] = useState("");
