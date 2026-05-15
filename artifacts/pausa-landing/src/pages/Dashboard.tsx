@@ -45,6 +45,7 @@ import { isSupabaseConfigured } from "@/lib/supabase";
 import { isClerkConfigured } from "@/lib/clerk-config";
 import { getPosts, type Post } from "@/lib/community";
 import { useUser as useClerkUser } from "@clerk/clerk-react";
+import ProfilePage from "./Profile";
 // ── Goals top bar ─────────────────────────────────────────────────────────────
 function GoalsTopBar({
   goals,
@@ -665,6 +666,11 @@ function DashboardInner() {
       icon: <Bot className="w-4 h-4" />,
       href: "/advisor",
     },
+    {
+      id: "profile",
+      label: "Profile",
+      icon: <Users className="w-4 h-4" />, // or use a better icon like User, Settings, etc.
+    },
   ];
 
   if (!isSupabaseConfigured) {
@@ -773,6 +779,7 @@ function DashboardInner() {
               financialProfile={financialProfile}
             />
           )}
+          {activeItem === "profile" && <ProfilePage isInsideDashboard={true} />}
         </>
       )}
       {showGoalModal && (
