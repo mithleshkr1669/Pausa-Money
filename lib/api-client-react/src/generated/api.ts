@@ -5,18 +5,30 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import type {
+  MutationFunction,
   QueryFunction,
   QueryKey,
+  UseMutationOptions,
+  UseMutationResult,
   UseQueryOptions,
   UseQueryResult,
 } from "@tanstack/react-query";
 
-import type { HealthStatus } from "./api.schemas";
+import type {
+  AgentQueryResponse,
+  AnalyzeQueryBody,
+  EvalRunResult,
+  HealthStatus,
+  LlmSettings,
+  QueryAgentRequest,
+  QueryAnalysis,
+  RunEvalBody,
+} from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
-import type { ErrorType } from "../custom-fetch";
+import type { ErrorType, BodyType } from "../custom-fetch";
 
 type AwaitedInput<T> = PromiseLike<T> | T;
 
@@ -99,3 +111,416 @@ export function useHealthCheck<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * Returns current LLM provider configuration
+ * @summary Get LLM Settings
+ */
+export const getGetLlmSettingsUrl = () => {
+  return `/api/settings/llm`;
+};
+
+export const getLlmSettings = async (
+  options?: RequestInit,
+): Promise<LlmSettings> => {
+  return customFetch<LlmSettings>(getGetLlmSettingsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetLlmSettingsQueryKey = () => {
+  return [`/api/settings/llm`] as const;
+};
+
+export const getGetLlmSettingsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getLlmSettings>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getLlmSettings>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetLlmSettingsQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getLlmSettings>>> = ({
+    signal,
+  }) => getLlmSettings({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getLlmSettings>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetLlmSettingsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getLlmSettings>>
+>;
+export type GetLlmSettingsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get LLM Settings
+ */
+
+export function useGetLlmSettings<
+  TData = Awaited<ReturnType<typeof getLlmSettings>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getLlmSettings>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetLlmSettingsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Returns the last cached evaluation results
+ * @summary Get Evaluation Results
+ */
+export const getGetEvalResultsUrl = () => {
+  return `/api/eval/results`;
+};
+
+export const getEvalResults = async (
+  options?: RequestInit,
+): Promise<EvalRunResult> => {
+  return customFetch<EvalRunResult>(getGetEvalResultsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetEvalResultsQueryKey = () => {
+  return [`/api/eval/results`] as const;
+};
+
+export const getGetEvalResultsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getEvalResults>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getEvalResults>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetEvalResultsQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getEvalResults>>> = ({
+    signal,
+  }) => getEvalResults({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getEvalResults>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetEvalResultsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getEvalResults>>
+>;
+export type GetEvalResultsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get Evaluation Results
+ */
+
+export function useGetEvalResults<
+  TData = Awaited<ReturnType<typeof getEvalResults>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getEvalResults>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetEvalResultsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Run the evaluation suite to test agent performance
+ * @summary Run Evaluation Suite
+ */
+export const getRunEvalUrl = () => {
+  return `/api/eval/run`;
+};
+
+export const runEval = async (
+  runEvalBody: RunEvalBody,
+  options?: RequestInit,
+): Promise<EvalRunResult> => {
+  return customFetch<EvalRunResult>(getRunEvalUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(runEvalBody),
+  });
+};
+
+export const getRunEvalMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof runEval>>,
+    TError,
+    { data: BodyType<RunEvalBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof runEval>>,
+  TError,
+  { data: BodyType<RunEvalBody> },
+  TContext
+> => {
+  const mutationKey = ["runEval"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof runEval>>,
+    { data: BodyType<RunEvalBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return runEval(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RunEvalMutationResult = NonNullable<
+  Awaited<ReturnType<typeof runEval>>
+>;
+export type RunEvalMutationBody = BodyType<RunEvalBody>;
+export type RunEvalMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Run Evaluation Suite
+ */
+export const useRunEval = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof runEval>>,
+    TError,
+    { data: BodyType<RunEvalBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof runEval>>,
+  TError,
+  { data: BodyType<RunEvalBody> },
+  TContext
+> => {
+  return useMutation(getRunEvalMutationOptions(options));
+};
+
+/**
+ * Send a query to the financial agent
+ * @summary Query Agent
+ */
+export const getQueryAgentUrl = () => {
+  return `/api/agents/query`;
+};
+
+export const queryAgent = async (
+  queryAgentRequest: QueryAgentRequest,
+  options?: RequestInit,
+): Promise<AgentQueryResponse> => {
+  return customFetch<AgentQueryResponse>(getQueryAgentUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(queryAgentRequest),
+  });
+};
+
+export const getQueryAgentMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof queryAgent>>,
+    TError,
+    { data: BodyType<QueryAgentRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof queryAgent>>,
+  TError,
+  { data: BodyType<QueryAgentRequest> },
+  TContext
+> => {
+  const mutationKey = ["queryAgent"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof queryAgent>>,
+    { data: BodyType<QueryAgentRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return queryAgent(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type QueryAgentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof queryAgent>>
+>;
+export type QueryAgentMutationBody = BodyType<QueryAgentRequest>;
+export type QueryAgentMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Query Agent
+ */
+export const useQueryAgent = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof queryAgent>>,
+    TError,
+    { data: BodyType<QueryAgentRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof queryAgent>>,
+  TError,
+  { data: BodyType<QueryAgentRequest> },
+  TContext
+> => {
+  return useMutation(getQueryAgentMutationOptions(options));
+};
+
+/**
+ * Analyze and categorize a financial query
+ * @summary Analyze Query
+ */
+export const getAnalyzeQueryUrl = () => {
+  return `/api/agents/analyze`;
+};
+
+export const analyzeQuery = async (
+  analyzeQueryBody: AnalyzeQueryBody,
+  options?: RequestInit,
+): Promise<QueryAnalysis> => {
+  return customFetch<QueryAnalysis>(getAnalyzeQueryUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(analyzeQueryBody),
+  });
+};
+
+export const getAnalyzeQueryMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof analyzeQuery>>,
+    TError,
+    { data: BodyType<AnalyzeQueryBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof analyzeQuery>>,
+  TError,
+  { data: BodyType<AnalyzeQueryBody> },
+  TContext
+> => {
+  const mutationKey = ["analyzeQuery"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof analyzeQuery>>,
+    { data: BodyType<AnalyzeQueryBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return analyzeQuery(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AnalyzeQueryMutationResult = NonNullable<
+  Awaited<ReturnType<typeof analyzeQuery>>
+>;
+export type AnalyzeQueryMutationBody = BodyType<AnalyzeQueryBody>;
+export type AnalyzeQueryMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Analyze Query
+ */
+export const useAnalyzeQuery = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof analyzeQuery>>,
+    TError,
+    { data: BodyType<AnalyzeQueryBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof analyzeQuery>>,
+  TError,
+  { data: BodyType<AnalyzeQueryBody> },
+  TContext
+> => {
+  return useMutation(getAnalyzeQueryMutationOptions(options));
+};

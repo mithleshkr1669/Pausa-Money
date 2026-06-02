@@ -14,6 +14,11 @@ import CommunityPostPage from "@/pages/CommunityPost";
 import AskQuestionPage from "@/pages/AskQuestion";
 import DashboardPage from "@/pages/Dashboard";
 import AIAdvisorPage from "@/pages/AIAdvisor";
+import { ChatPage } from "@/pages/Chat";
+import { ToolsPage } from "@/pages/Tools";
+import { AnalysisPage } from "@/pages/Analysis";
+import { EvalPage } from "@/pages/Eval";
+import { SettingsPage } from "@/pages/Settings";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -34,6 +39,11 @@ function Routes() {
       <Route path="/community/:id" component={CommunityPostPage} />
       <Route path="/dashboard" component={DashboardPage} />
       <Route path="/advisor" component={AIAdvisorPage} />
+      <Route path="/chat" component={ChatPage} />
+      <Route path="/tools" component={ToolsPage} />
+      <Route path="/analysis" component={AnalysisPage} />
+      <Route path="/eval" component={EvalPage} />
+      <Route path="/settings" component={SettingsPage} />
       <Route component={NotFound} />
     </Switch>
   );

@@ -10,6 +10,12 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: settings
+    description: Settings operations
+  - name: eval
+    description: Evaluation operations
+  - name: agents
+    description: Agent operations
 paths:
   /healthz:
     get:
@@ -24,6 +30,95 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /settings/llm:
+    get:
+      operationId: getLlmSettings
+      tags: [settings]
+      summary: Get LLM Settings
+      description: Returns current LLM provider configuration
+      responses:
+        "200":
+          description: LLM Settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LlmSettings"
+  /eval/results:
+    get:
+      operationId: getEvalResults
+      tags: [eval]
+      summary: Get Evaluation Results
+      description: Returns the last cached evaluation results
+      responses:
+        "200":
+          description: Evaluation Results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EvalRunResult"
+  /eval/run:
+    post:
+      operationId: runEval
+      tags: [eval]
+      summary: Run Evaluation Suite
+      description: Run the evaluation suite to test agent performance
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties: {}
+      responses:
+        "200":
+          description: Evaluation Results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EvalRunResult"
+  /agents/query:
+    post:
+      operationId: queryAgent
+      tags: [agents]
+      summary: Query Agent
+      description: Send a query to the financial agent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QueryAgentRequest"
+      responses:
+        "200":
+          description: Agent Response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentQueryResponse"
+  /agents/analyze:
+    post:
+      operationId: analyzeQuery
+      tags: [agents]
+      summary: Analyze Query
+      description: Analyze and categorize a financial query
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                query:
+                  type: string
+              required:
+                - query
+      responses:
+        "200":
+          description: Query Analysis
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QueryAnalysis"
 components:
   schemas:
     HealthStatus:
@@ -33,4 +128,198 @@ components:
           type: string
       required:
         - status
-
+    LlmSettings:
+      type: object
+      properties:
+        provider:
+          type: string
+          enum: [gemini, openai]
+          description: Active LLM provider
+        model:
+          type: string
+          description: Currently configured model name
+        base_url:
+          type: string
+          nullable: true
+          description: Base URL for OpenAI-compatible providers
+        has_api_key:
+          type: boolean
+          description: Whether API key is configured
+        gemini_configured:
+          type: boolean
+          description: Whether Gemini API is configured
+        openai_configured:
+          type: boolean
+          description: Whether OpenAI-compatible provider is configured
+        available_providers:
+          type: array
+          items:
+            type: string
+          description: List of available providers
+        env_hints:
+          type: object
+          properties:
+            gemini:
+              type: string
+            openai:
+              type: string
+          description: Hints for configuring providers
+      required:
+        - provider
+        - model
+        - has_api_key
+        - gemini_configured
+        - openai_configured
+        - available_providers
+        - env_hints
+    EvalTestResult:
+      type: object
+      properties:
+        test_id:
+          type: string
+        query:
+          type: string
+        category:
+          type: string
+        passed:
+          type: boolean
+        score:
+          type: number
+        expected_domain:
+          type: string
+        actual_domain:
+          type: string
+        expected_agent:
+          type: string
+        actual_agent:
+          type: string
+        response_preview:
+          type: string
+        latency_ms:
+          type: number
+        error:
+          type: string
+          nullable: true
+      required:
+        - test_id
+        - query
+        - category
+        - passed
+        - score
+        - expected_domain
+        - actual_domain
+        - expected_agent
+        - actual_agent
+        - response_preview
+        - latency_ms
+    EvalRunResult:
+      type: object
+      properties:
+        run_id:
+          type: string
+        total_tests:
+          type: number
+        passed:
+          type: number
+        failed:
+          type: number
+        pass_rate:
+          type: number
+        avg_latency_ms:
+          type: number
+        category_scores:
+          type: object
+          additionalProperties:
+            type: number
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/EvalTestResult"
+        ran_at:
+          type: string
+      required:
+        - run_id
+        - total_tests
+        - passed
+        - failed
+        - pass_rate
+        - avg_latency_ms
+        - category_scores
+        - results
+        - ran_at
+    Message:
+      type: object
+      properties:
+        role:
+          type: string
+          enum: [user, assistant]
+        content:
+          type: string
+      required:
+        - role
+        - content
+    QueryAgentRequest:
+      type: object
+      properties:
+        query:
+          type: string
+        conversation_history:
+          type: array
+          items:
+            $ref: "#/components/schemas/Message"
+      required:
+        - query
+    AgentQueryResponse:
+      type: object
+      properties:
+        query:
+          type: string
+        agent_name:
+          type: string
+        agent_id:
+          type: string
+        detected_domains:
+          type: array
+          items:
+            type: string
+        response:
+          type: string
+        conversation_history:
+          type: array
+          items:
+            $ref: "#/components/schemas/Message"
+        skills_used:
+          type: array
+          items:
+            type: string
+        tools_used:
+          type: array
+          items:
+            type: string
+        processing_time_ms:
+          type: number
+      required:
+        - query
+        - agent_name
+        - agent_id
+        - detected_domains
+        - response
+        - conversation_history
+        - processing_time_ms
+    QueryAnalysis:
+      type: object
+      properties:
+        query:
+          type: string
+        recommended_agent:
+          type: string
+        confidence:
+          type: number
+        detected_domains:
+          type: array
+          items:
+            type: string
+      required:
+        - query
+        - recommended_agent
+        - confidence

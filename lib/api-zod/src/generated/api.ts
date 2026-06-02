@@ -14,3 +14,142 @@ import * as zod from "zod";
 export const HealthCheckResponse = zod.object({
   status: zod.string(),
 });
+
+/**
+ * Returns current LLM provider configuration
+ * @summary Get LLM Settings
+ */
+export const GetLlmSettingsResponse = zod.object({
+  provider: zod.enum(["gemini", "openai"]).describe("Active LLM provider"),
+  model: zod.string().describe("Currently configured model name"),
+  base_url: zod
+    .string()
+    .nullish()
+    .describe("Base URL for OpenAI-compatible providers"),
+  has_api_key: zod.boolean().describe("Whether API key is configured"),
+  gemini_configured: zod.boolean().describe("Whether Gemini API is configured"),
+  openai_configured: zod
+    .boolean()
+    .describe("Whether OpenAI-compatible provider is configured"),
+  available_providers: zod
+    .array(zod.string())
+    .describe("List of available providers"),
+  env_hints: zod
+    .object({
+      gemini: zod.string().optional(),
+      openai: zod.string().optional(),
+    })
+    .describe("Hints for configuring providers"),
+});
+
+/**
+ * Returns the last cached evaluation results
+ * @summary Get Evaluation Results
+ */
+export const GetEvalResultsResponse = zod.object({
+  run_id: zod.string(),
+  total_tests: zod.number(),
+  passed: zod.number(),
+  failed: zod.number(),
+  pass_rate: zod.number(),
+  avg_latency_ms: zod.number(),
+  category_scores: zod.record(zod.string(), zod.number()),
+  results: zod.array(
+    zod.object({
+      test_id: zod.string(),
+      query: zod.string(),
+      category: zod.string(),
+      passed: zod.boolean(),
+      score: zod.number(),
+      expected_domain: zod.string(),
+      actual_domain: zod.string(),
+      expected_agent: zod.string(),
+      actual_agent: zod.string(),
+      response_preview: zod.string(),
+      latency_ms: zod.number(),
+      error: zod.string().nullish(),
+    }),
+  ),
+  ran_at: zod.string(),
+});
+
+/**
+ * Run the evaluation suite to test agent performance
+ * @summary Run Evaluation Suite
+ */
+export const RunEvalBody = zod.object({}).passthrough();
+
+export const RunEvalResponse = zod.object({
+  run_id: zod.string(),
+  total_tests: zod.number(),
+  passed: zod.number(),
+  failed: zod.number(),
+  pass_rate: zod.number(),
+  avg_latency_ms: zod.number(),
+  category_scores: zod.record(zod.string(), zod.number()),
+  results: zod.array(
+    zod.object({
+      test_id: zod.string(),
+      query: zod.string(),
+      category: zod.string(),
+      passed: zod.boolean(),
+      score: zod.number(),
+      expected_domain: zod.string(),
+      actual_domain: zod.string(),
+      expected_agent: zod.string(),
+      actual_agent: zod.string(),
+      response_preview: zod.string(),
+      latency_ms: zod.number(),
+      error: zod.string().nullish(),
+    }),
+  ),
+  ran_at: zod.string(),
+});
+
+/**
+ * Send a query to the financial agent
+ * @summary Query Agent
+ */
+export const QueryAgentBody = zod.object({
+  query: zod.string(),
+  conversation_history: zod
+    .array(
+      zod.object({
+        role: zod.enum(["user", "assistant"]),
+        content: zod.string(),
+      }),
+    )
+    .optional(),
+});
+
+export const QueryAgentResponse = zod.object({
+  query: zod.string(),
+  agent_name: zod.string(),
+  agent_id: zod.string(),
+  detected_domains: zod.array(zod.string()),
+  response: zod.string(),
+  conversation_history: zod.array(
+    zod.object({
+      role: zod.enum(["user", "assistant"]),
+      content: zod.string(),
+    }),
+  ),
+  skills_used: zod.array(zod.string()).optional(),
+  tools_used: zod.array(zod.string()).optional(),
+  processing_time_ms: zod.number(),
+});
+
+/**
+ * Analyze and categorize a financial query
+ * @summary Analyze Query
+ */
+export const AnalyzeQueryBody = zod.object({
+  query: zod.string(),
+});
+
+export const AnalyzeQueryResponse = zod.object({
+  query: zod.string(),
+  recommended_agent: zod.string(),
+  confidence: zod.number(),
+  detected_domains: zod.array(zod.string()).optional(),
+});

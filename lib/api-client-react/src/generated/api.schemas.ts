@@ -8,3 +8,112 @@
 export interface HealthStatus {
   status: string;
 }
+
+/**
+ * Active LLM provider
+ */
+export type LlmSettingsProvider =
+  (typeof LlmSettingsProvider)[keyof typeof LlmSettingsProvider];
+
+export const LlmSettingsProvider = {
+  gemini: "gemini",
+  openai: "openai",
+} as const;
+
+/**
+ * Hints for configuring providers
+ */
+export type LlmSettingsEnvHints = {
+  gemini?: string;
+  openai?: string;
+};
+
+export interface LlmSettings {
+  /** Active LLM provider */
+  provider: LlmSettingsProvider;
+  /** Currently configured model name */
+  model: string;
+  /** Base URL for OpenAI-compatible providers */
+  base_url?: string | null;
+  /** Whether API key is configured */
+  has_api_key: boolean;
+  /** Whether Gemini API is configured */
+  gemini_configured: boolean;
+  /** Whether OpenAI-compatible provider is configured */
+  openai_configured: boolean;
+  /** List of available providers */
+  available_providers: string[];
+  /** Hints for configuring providers */
+  env_hints: LlmSettingsEnvHints;
+}
+
+export interface EvalTestResult {
+  test_id: string;
+  query: string;
+  category: string;
+  passed: boolean;
+  score: number;
+  expected_domain: string;
+  actual_domain: string;
+  expected_agent: string;
+  actual_agent: string;
+  response_preview: string;
+  latency_ms: number;
+  error?: string | null;
+}
+
+export type EvalRunResultCategoryScores = { [key: string]: number };
+
+export interface EvalRunResult {
+  run_id: string;
+  total_tests: number;
+  passed: number;
+  failed: number;
+  pass_rate: number;
+  avg_latency_ms: number;
+  category_scores: EvalRunResultCategoryScores;
+  results: EvalTestResult[];
+  ran_at: string;
+}
+
+export type MessageRole = (typeof MessageRole)[keyof typeof MessageRole];
+
+export const MessageRole = {
+  user: "user",
+  assistant: "assistant",
+} as const;
+
+export interface Message {
+  role: MessageRole;
+  content: string;
+}
+
+export interface QueryAgentRequest {
+  query: string;
+  conversation_history?: Message[];
+}
+
+export interface AgentQueryResponse {
+  query: string;
+  agent_name: string;
+  agent_id: string;
+  detected_domains: string[];
+  response: string;
+  conversation_history: Message[];
+  skills_used?: string[];
+  tools_used?: string[];
+  processing_time_ms: number;
+}
+
+export interface QueryAnalysis {
+  query: string;
+  recommended_agent: string;
+  confidence: number;
+  detected_domains?: string[];
+}
+
+export type RunEvalBody = { [key: string]: unknown };
+
+export type AnalyzeQueryBody = {
+  query: string;
+};

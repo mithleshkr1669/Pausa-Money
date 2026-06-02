@@ -1,0 +1,266 @@
+# Layout Restructure - Visual Guide
+
+## New Application Structure
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│                    Pausa FinAdvisor                           │
+├──────────────────┬──────────────────────────────────────────┤
+│                  │                                            │
+│  SIDEBAR         │         MAIN CONTENT AREA                 │
+│                  │                                            │
+│  ┌─────────────┐ │                                            │
+│  │ Logo        │ │  Displays selected page:                  │
+│  │ FinAdvisor  │ │  - Chat (AI Advisor)                      │
+│  └─────────────┘ │  - Tools (Calculators)                    │
+│                  │  - Analysis (Transactions)                │
+│  ┌─────────────┐ │  - Eval (Performance)                     │
+│  │ Navigation  │ │  - Settings (LLM Config)                  │
+│  ├─────────────┤ │                                            │
+│  │ • Chat      │ │                                            │
+│  │ • Tools     │ │                                            │
+│  │ • Analysis  │ │                                            │
+│  │ • Eval      │ │                                            │
+│  │ • Settings  │ │                                            │
+│  └─────────────┘ │                                            │
+│                  │                                            │
+│  ┌─────────────┐ │                                            │
+│  │ My Profile  │ │  All pages wrap with Layout               │
+│  │ [▼]         │ │  for consistent navigation                │
+│  ├─────────────┤ │                                            │
+│  │ Name        │ │                                            │
+│  │ Income      │ │                                            │
+│  │ Expenses    │ │                                            │
+│  │ Savings %   │ │                                            │
+│  │ [Edit]      │ │                                            │
+│  └─────────────┘ │                                            │
+│                  │                                            │
+│  ┌─────────────┐ │                                            │
+│  │ Currency    │ │  Updates all pages when                   │
+│  │ [INR ▾]     │ │  selection changes                        │
+│  └─────────────┘ │                                            │
+│                  │                                            │
+│  ┌─────────────┐ │                                            │
+│  │ API Status  │ │                                            │
+│  │ ● Online    │ │                                            │
+│  └─────────────┘ │                                            │
+└──────────────────┴──────────────────────────────────────────┘
+```
+
+## Page Navigation Map
+
+```
+                    ┌──────────────┐
+                    │  Home / Sign  │
+                    └──────┬───────┘
+                           │
+         ┌─────────────────┼─────────────────┐
+         │                 │                 │
+    ┌────▼────┐      ┌─────▼─────┐   ┌──────▼──────┐
+    │Dashboard │      │Onboarding │   │ Community   │
+    └─────────┘      └───────────┘   └─────────────┘
+         │
+         │    (After Onboarding)
+         │
+    ┌────▼────────────────────────────────────┐
+    │   MAIN APP (with Sidebar Layout)         │
+    ├───────┬───────┬──────────┬────┬─────────┤
+    │ Chat  │ Tools │Analysis  │Eval│Settings │
+    └───────┴───────┴──────────┴────┴─────────┘
+         │
+         ├─► /chat (ChatPage)
+         │    • AI Financial Advisor
+         │    • File upload (PDF/Image)
+         │    • Conversation history
+         │
+         ├─► /tools (ToolsPage)
+         │    • SIP Calculator
+         │    • Budget Planner
+         │    • Mortgage/EMI Calculator
+         │    • Debt Payoff Calculator
+         │    • Emergency Fund Calculator
+         │
+         ├─► /analysis (AnalysisPage)
+         │    • Transaction analysis
+         │    • Need/Want/Subscription breakdown
+         │    • Month-to-month comparison
+         │    • Smart recommendations
+         │
+         ├─► /eval (EvalPage)
+         │    • Agent performance metrics
+         │    • Domain-wise accuracy
+         │    • Test results detailed view
+         │
+         └─► /settings (SettingsPage)
+              • LLM Provider configuration
+              • Gemini vs OpenAI selection
+              • API key status
+```
+
+## Currency System Flow
+
+```
+┌────────────────────────────────────────┐
+│   CurrencyProvider (Context)            │
+│   - Wraps entire app                    │
+│   - Manages global currency state       │
+└─────────────────┬──────────────────────┘
+                  │
+        ┌─────────┴─────────┐
+        │                   │
+    ┌───▼────┐         ┌────▼────┐
+    │Sidebar │         │useCurrency│
+    │Currency│ ◄──────► │(hook)    │
+    │Select  │         └──────────┘
+    └────────┘
+        │
+        │ (onChange)
+        │
+    ┌───┴─────────────────────────────────┐
+    │ All Pages Read Currency Value:       │
+    ├─────────────────────────────────────┤
+    │ • Chat - user context               │
+    │ • Tools - all calculations          │
+    │ • Analysis - transaction display    │
+    │ • Eval - results                    │
+    │ • Settings - configuration          │
+    └─────────────────────────────────────┘
+```
+
+## Data Flow for Page Navigation
+
+```
+User clicks nav item
+       │
+       ▼
+┌──────────────────┐
+│ Layout Component │
+│ (sidebar)        │
+└────────┬─────────┘
+         │
+         │ (wouter router)
+         │
+    ┌────▼────────────────┐
+    │ Switch/Route Handler │
+    └────┬─────┬──────┬──┬─┐
+         │     │      │  │ │
+    ┌────▼┐ ┌──▼──┐ ┌─▼──▼─┐ ...
+    │Chat │ │Tools│ │Analy │
+    │Page │ │Page │ │sis   │
+    └─────┘ └─────┘ └──────┘
+         │       │      │
+         └───┬───┴──┬───┘
+             │      │
+         ┌───▼──────▼───────┐
+         │ All wrapped in    │
+         │ <Layout>         │
+         │ (with sidebar)   │
+         └──────────────────┘
+```
+
+## Profile Management Flow
+
+```
+┌─────────────────────────────────┐
+│  Profile Toggle Button           │
+│  "My Profile" [▼/▲]             │
+└────────────┬────────────────────┘
+             │
+    ┌────────┴──────────┐
+    │                   │
+Collapsed          Expanded
+    │                   │
+    │          ┌────────▼───────┐
+    │          │ Profile View    │
+    │          │ ├─ Name         │
+    │          │ ├─ Income       │
+    │          │ ├─ Expenses     │
+    │          │ ├─ Savings %    │
+    │          │ └─ [Edit]       │
+    │          └────────┬────────┘
+    │                   │ (click Edit)
+    │          ┌────────▼──────────┐
+    │          │ Profile Edit Mode  │
+    │          │ ├─ Name input      │
+    │          │ ├─ Income input    │
+    │          │ ├─ Expenses input  │
+    │          │ └─ [Save Profile]  │
+    │          └───────────────────┘
+    │
+    └──────────────────────────────┘
+```
+
+## API Endpoints Integration
+
+```
+Frontend Pages                  OpenAPI Spec                Backend Routes
+─────────────                  ────────────                ──────────────
+
+Chat Page ──────┐
+                │              /agents/query              POST /agents/query
+                ├─────────────►(POST)
+                │              → AgentQueryResponse
+                │
+                │              /agents/analyze            POST /agents/analyze
+                └─────────────►(POST)
+                               → QueryAnalysis
+
+Eval Page ──────┐
+                │              /eval/results              GET /eval/results
+                ├─────────────►(GET)
+                │              → EvalRunResult
+                │
+                │              /eval/run                  POST /eval/run
+                └─────────────►(POST)
+                               → EvalRunResult
+
+Settings Page ──┐
+                │              /settings/llm              GET /settings/llm
+                └─────────────►(GET)
+                               → LlmSettings
+```
+
+## Error Resolution Summary
+
+### Before (Errors):
+
+```
+❌ Missing API hooks:
+  - useGetEvalResults
+  - useRunEval
+  - useQueryAgent
+  - useAnalyzeQuery
+  - useGetLlmSettings
+
+❌ Missing types:
+  - Message
+  - AgentQueryResponse
+  - EvalRunResult
+
+❌ Tailwind warnings:
+  - bg-white/[0.04] instead of bg-white/4
+  - hover:bg-white/[0.03] instead of hover:bg-white/3
+  - max-w-[180px] instead of max-w-44
+  - etc.
+
+❌ Type errors:
+  - Parameter implicitly has 'any' type
+  - 'score' is of type 'unknown'
+```
+
+### After (Fixed):
+
+```
+✅ All API hooks generated from OpenAPI spec
+✅ All types properly defined
+✅ Tailwind classes updated to standard syntax
+✅ All TypeScript errors resolved
+✅ Layout properly structured with sidebar
+✅ Currency system integrated
+✅ Profile management functional
+✅ All pages wrapped with Layout
+```
+
+---
+
+**Status:** ✅ **COMPLETE** - Layout restructure successful with zero errors!

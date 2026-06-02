@@ -6,4 +6,17 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from "./agentQueryResponse";
+export * from "./analyzeQueryBody";
+export * from "./evalRunResult";
+export * from "./evalRunResultCategoryScores";
+export * from "./evalTestResult";
 export * from "./healthStatus";
+export * from "./llmSettings";
+export * from "./llmSettingsEnvHints";
+export * from "./llmSettingsProvider";
+export * from "./message";
+export * from "./messageRole";
+export * from "./queryAgentRequest";
+export * from "./queryAnalysis";
+export * from "./runEvalBody";
