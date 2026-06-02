@@ -9,6 +9,11 @@ import {
 } from "lucide-react";
 import { useFinancialProfile } from "@/hooks/useFinancialProfile";
 import { useCurrency, fmtCurrencyRaw } from "@/hooks/useCurrency";
+import {
+  inferNeedType,
+  Transaction,
+  useFinancialAnalysis,
+} from "@/hooks/useFinancialAnalysis";
 
 export interface FinancialConfirmData {
   monthlyIncome: number | null;
@@ -240,7 +245,7 @@ export function TransactionConfirmCard({
   onConfirmAndAnalyze,
 }: {
   data: TransactionConfirmData;
-  onConfirmAndAnalyze?: (summary: string) => void;
+  onConfirmAndAnalyze?: (summary: string, transactions: Transaction[]) => void;
 }) {
   const { currency } = useCurrency();
   const { updateProfile } = useFinancialProfile();
@@ -249,6 +254,7 @@ export function TransactionConfirmCard({
   );
   const [incomeItems] = useState<TransactionItem[]>(data.incomeItems);
   const [confirmed, setConfirmed] = useState(false);
+  const { addAnalysis } = useFinancialAnalysis();
 
   const totalInc = incomeItems.reduce((s, i) => s + i.amount, 0);
   const totalExp = expenseItems.reduce((s, i) => s + i.amount, 0);
@@ -271,12 +277,74 @@ export function TransactionConfirmCard({
     );
   };
 
+  //   const handleConfirm = () => {
+  //     updateProfile({
+  //       monthlyIncome: totalInc || null,
+  //       monthlyExpenses: totalExp || null,
+  //     });
+  //     setConfirmed(true);
+  //     if (onConfirmAndAnalyze) {
+  //       const breakdown = expenseItems.reduce<Record<string, number>>(
+  //         (acc, item) => {
+  //           const cat = item.category || "Other";
+  //           acc[cat] = (acc[cat] || 0) + item.amount;
+  //           return acc;
+  //         },
+  //         {},
+  //       );
+  //       const summary = `Confirmed transaction data for ${data.period || "this period"}:
+  // - Total income: ${currency.symbol}${totalInc.toLocaleString()} (${incomeItems.map((i) => `${i.desc}: ${currency.symbol}${i.amount}`).join(", ")})
+  // - Total expenses: ${currency.symbol}${totalExp.toLocaleString()}
+  // - Category breakdown: ${Object.entries(breakdown)
+  //         .map(([k, v]) => `${k}: ${currency.symbol}${v}`)
+  //         .join(", ")}
+  // - Net savings: ${currency.symbol}${net.toLocaleString()}
+  // Please provide a detailed financial analysis and recommendations based on these confirmed numbers.`;
+  //       onConfirmAndAnalyze(summary);
+  //     }
+  //   };
   const handleConfirm = () => {
+    // Build proper Transaction[] from the card's items
+    const transactions: Transaction[] = [
+      ...incomeItems.map((item, i) => ({
+        id: `tx_${Date.now()}_inc_${i}`,
+        description: item.desc,
+        amount: item.amount,
+        type: "income" as const,
+        category: item.category || "Salary",
+        needType: inferNeedType(item.category || "Salary", "income"),
+      })),
+      ...expenseItems.map((item, i) => ({
+        id: `tx_${Date.now()}_exp_${i}`,
+        description: item.desc,
+        amount: item.amount,
+        type: "expense" as const,
+        category: item.category || "Other",
+        needType: inferNeedType(item.category || "Other", "expense"),
+      })),
+    ];
+
+    // Persist to AnalysisContext → AnalysisPage reads this automatically
+    addAnalysis({
+      period:
+        data.period ||
+        new Date().toLocaleDateString("en-IN", {
+          month: "long",
+          year: "numeric",
+        }),
+      totalIncome: totalInc,
+      totalExpenses: totalExp,
+      transactions,
+    });
+
+    // Sync profile
     updateProfile({
       monthlyIncome: totalInc || null,
       monthlyExpenses: totalExp || null,
     });
+
     setConfirmed(true);
+
     if (onConfirmAndAnalyze) {
       const breakdown = expenseItems.reduce<Record<string, number>>(
         (acc, item) => {
@@ -294,10 +362,9 @@ export function TransactionConfirmCard({
         .join(", ")}
 - Net savings: ${currency.symbol}${net.toLocaleString()}
 Please provide a detailed financial analysis and recommendations based on these confirmed numbers.`;
-      onConfirmAndAnalyze(summary);
+      onConfirmAndAnalyze(summary, transactions);
     }
   };
-
   if (confirmed) {
     return (
       <div

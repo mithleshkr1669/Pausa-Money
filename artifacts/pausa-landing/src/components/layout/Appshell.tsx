@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "wouter";
-import { Menu, X } from "lucide-react";
+import { Menu, Users, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { RING_CONFIG, type RingTier } from "@/lib/community";
 import type { Profile } from "@/lib/community";
@@ -122,7 +122,7 @@ export function AppShell({
         {[
           { href: "/dashboard", label: "Dashboard", icon: "📊" },
           { href: "/community", label: "Community", icon: "🌱" },
-          { href: "/advisor", label: "AI Advisor", icon: "🤖" },
+          // { href: "/advisor", label: "AI Advisor", icon: "🤖" },
         ].map((l) => (
           <Link key={l.href} href={l.href} onClick={onClose}>
             <button className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors">
@@ -131,11 +131,11 @@ export function AppShell({
             </button>
           </Link>
         ))}
-        <Link href="/" onClick={onClose}>
+        {/* <Link href="/" onClick={onClose} >
           <button className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors mt-1">
             ← Landing page
           </button>
-        </Link>
+        </Link> */}
       </div>
     </div>
   );

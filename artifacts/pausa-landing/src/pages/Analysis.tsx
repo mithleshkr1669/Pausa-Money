@@ -101,7 +101,7 @@ function EmptyState() {
           extract, categorize, and save it here automatically.
         </p>
       </div>
-      <Link href="/">
+      {/* <Link href="/advisor">
         <button
           className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all"
           style={{
@@ -112,7 +112,7 @@ function EmptyState() {
           <Plus className="w-4 h-4" />
           Go to Chat & Upload Statement
         </button>
-      </Link>
+      </Link> */}
     </div>
   );
 }
@@ -923,126 +923,122 @@ export function AnalysisPage() {
   ];
 
   return (
-    <Layout>
-      <div className="h-full flex flex-col">
-        <header
-          className="px-6 py-4 border-b border-border shrink-0 flex items-center justify-between"
-          style={{ background: "hsl(0 0% 7%)" }}
-        >
-          <div>
-            <h1 className="text-lg font-semibold font-lora text-gradient">
-              Spending Analysis
-            </h1>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              AI-analyzed bank statements · needs vs wants · subscriptions
-            </p>
-          </div>
-          {analyses.length > 0 && (
-            <div className="flex items-center gap-2">
-              {analyses.map((a) => (
-                <button
-                  key={a.id}
-                  onClick={() => setSelectedId(a.id)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${(!selectedId && a.id === analyses[analyses.length - 1].id) || selectedId === a.id ? "bg-primary/15 text-primary border border-primary/20" : "text-muted-foreground border border-white/[0.07] hover:border-white/20"}`}
-                >
-                  {a.period}
-                </button>
-              ))}
-              {analysis && (
-                <button
-                  onClick={() => {
-                    removeAnalysis(analysis.id);
-                    setSelectedId(null);
-                  }}
-                  className="p-1.5 rounded-lg text-muted-foreground hover:text-red-400 hover:bg-red-400/10 transition-all"
-                  title="Delete this analysis"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
-          )}
-        </header>
-
-        {!analysis ? (
-          <EmptyState />
-        ) : (
-          <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
-            {/* Summary Cards */}
-            <div className="grid grid-cols-4 gap-3">
-              {[
-                {
-                  label: "Total Income",
-                  value: fmtCurrencyRaw(analysis.totalIncome, currency),
-                  color: "text-emerald-400",
-                },
-                {
-                  label: "Total Expenses",
-                  value: fmtCurrencyRaw(analysis.totalExpenses, currency),
-                  color: "text-red-400",
-                },
-                {
-                  label: "Net Savings",
-                  value: `${net >= 0 ? "+" : ""}${fmtCurrencyRaw(Math.abs(net), currency)}`,
-                  color: net >= 0 ? "text-primary" : "text-red-400",
-                },
-                {
-                  label: "Savings Rate",
-                  value: `${savingsRate}%`,
-                  color:
-                    Number(savingsRate) >= 20
-                      ? "text-primary"
-                      : Number(savingsRate) >= 10
-                        ? "text-amber-400"
-                        : "text-red-400",
-                },
-              ].map((c) => (
-                <div
-                  key={c.label}
-                  className="p-4 rounded-xl border border-border bg-card"
-                >
-                  <div className="text-[11px] text-muted-foreground mb-1 font-medium">
-                    {c.label}
-                  </div>
-                  <div className={`text-lg font-bold ${c.color}`}>
-                    {c.value}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Tabs */}
-            <div
-              className="flex gap-1 p-1 rounded-xl"
-              style={{
-                background: "rgba(255,255,255,0.03)",
-                border: "1px solid rgba(255,255,255,0.06)",
-              }}
-            >
-              {TABS.map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-all ${activeTab === tab.id ? "bg-primary/15 text-primary border border-primary/20" : "text-muted-foreground hover:text-foreground"}`}
-                >
-                  {tab.icon}
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Tab content */}
-            {activeTab === "overview" && <OverviewTab analysis={analysis} />}
-            {activeTab === "transactions" && (
-              <TransactionsTab analysis={analysis} analysisId={analysis.id} />
+    <div className="h-full flex flex-col">
+      {/* <header
+        className="px-6 py-4 border-b border-border shrink-0 flex items-center justify-between"
+        style={{ background: "hsl(0 0% 7%)" }}
+      >
+        <div>
+          <h1 className="text-lg font-semibold font-lora text-gradient">
+            Spending Analysis
+          </h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            AI-analyzed bank statements · needs vs wants · subscriptions
+          </p>
+        </div>
+        {analyses.length > 0 && (
+          <div className="flex items-center gap-2">
+            {analyses.map((a) => (
+              <button
+                key={a.id}
+                onClick={() => setSelectedId(a.id)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${(!selectedId && a.id === analyses[analyses.length - 1].id) || selectedId === a.id ? "bg-primary/15 text-primary border border-primary/20" : "text-muted-foreground border border-white/[0.07] hover:border-white/20"}`}
+              >
+                {a.period}
+              </button>
+            ))}
+            {analysis && (
+              <button
+                onClick={() => {
+                  removeAnalysis(analysis.id);
+                  setSelectedId(null);
+                }}
+                className="p-1.5 rounded-lg text-muted-foreground hover:text-red-400 hover:bg-red-400/10 transition-all"
+                title="Delete this analysis"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
             )}
-            {activeTab === "subscriptions" && (
-              <SubscriptionsTab analysis={analysis} analysisId={analysis.id} />
-            )}
-            {activeTab === "compare" && <CompareTab analyses={analyses} />}
           </div>
         )}
-      </div>
-    </Layout>
+      </header> */}
+
+      {!analysis ? (
+        <EmptyState />
+      ) : (
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+          {/* Summary Cards */}
+          <div className="grid grid-cols-4 gap-3">
+            {[
+              {
+                label: "Total Income",
+                value: fmtCurrencyRaw(analysis.totalIncome, currency),
+                color: "text-emerald-400",
+              },
+              {
+                label: "Total Expenses",
+                value: fmtCurrencyRaw(analysis.totalExpenses, currency),
+                color: "text-red-400",
+              },
+              {
+                label: "Net Savings",
+                value: `${net >= 0 ? "+" : ""}${fmtCurrencyRaw(Math.abs(net), currency)}`,
+                color: net >= 0 ? "text-primary" : "text-red-400",
+              },
+              {
+                label: "Savings Rate",
+                value: `${savingsRate}%`,
+                color:
+                  Number(savingsRate) >= 20
+                    ? "text-primary"
+                    : Number(savingsRate) >= 10
+                      ? "text-amber-400"
+                      : "text-red-400",
+              },
+            ].map((c) => (
+              <div
+                key={c.label}
+                className="p-4 rounded-xl border border-border bg-card"
+              >
+                <div className="text-[11px] text-muted-foreground mb-1 font-medium">
+                  {c.label}
+                </div>
+                <div className={`text-lg font-bold ${c.color}`}>{c.value}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Tabs */}
+          <div
+            className="flex gap-1 p-1 rounded-xl"
+            style={{
+              background: "rgba(255,255,255,0.03)",
+              border: "1px solid rgba(255,255,255,0.06)",
+            }}
+          >
+            {TABS.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-all ${activeTab === tab.id ? "bg-primary/15 text-primary border border-primary/20" : "text-muted-foreground hover:text-foreground"}`}
+              >
+                {tab.icon}
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Tab content */}
+          {activeTab === "overview" && <OverviewTab analysis={analysis} />}
+          {activeTab === "transactions" && (
+            <TransactionsTab analysis={analysis} analysisId={analysis.id} />
+          )}
+          {activeTab === "subscriptions" && (
+            <SubscriptionsTab analysis={analysis} analysisId={analysis.id} />
+          )}
+          {activeTab === "compare" && <CompareTab analyses={analyses} />}
+        </div>
+      )}
+    </div>
   );
 }

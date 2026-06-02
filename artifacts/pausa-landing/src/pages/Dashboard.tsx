@@ -14,6 +14,8 @@ import {
   Bot,
   ChevronUp,
   ChevronDown,
+  UserCircle,
+  ToolCase,
 } from "lucide-react";
 import { AppShell, type NavItem } from "@/components/layout/Appshell";
 import { RingProgress } from "@/components/dashboard/RingProgress";
@@ -46,6 +48,10 @@ import { isClerkConfigured } from "@/lib/clerk-config";
 import { getPosts, type Post } from "@/lib/community";
 import { useUser as useClerkUser } from "@clerk/clerk-react";
 import ProfilePage from "./Profile";
+import { useProfile } from "@/hooks/useProfile";
+import ToolsPageV2 from "./Tools_v2";
+import { AnalysisPage } from "./Analysis";
+import { ChatPageV2 } from "./ChatV2";
 // ── Goals top bar ─────────────────────────────────────────────────────────────
 function GoalsTopBar({
   goals,
@@ -546,7 +552,8 @@ function DashboardInner() {
   //   : { user: null };
   const clerk = isClerkConfigured ? useClerkUser() : { user: null };
   const user = clerk.user;
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const { profile, loading: profileLoading } = useProfile();
+  // const [profile, setProfile] = useState<Profile | null>(null);
   const [goals, setGoals] = useState<SavingsGoal[]>([]);
   const [financialProfile, setFinancialProfile] =
     useState<FinancialProfile | null>(null);
@@ -560,29 +567,45 @@ function DashboardInner() {
   } | null>(null);
   const [activeItem, setActiveItem] = useState("overview");
 
+  // const loadData = useCallback(async () => {
+  //   if (!user) return;
+  //   setLoading(true);
+  //   const [p, g, fp, posts, pc] = await Promise.all([
+  //     upsertProfile(
+  //       user.id,
+  //       user.fullName ?? user.primaryEmailAddress?.emailAddress ?? "User",
+  //       user.imageUrl ?? undefined,
+  //     ),
+  //     getGoals(user.id),
+  //     getFinancialProfile(user.id),
+  //     getPosts(),
+  //     getUserPostCount(user.id),
+  //   ]);
+  //   const latest = await getProfile(user.id);
+  //   // setProfile(latest ?? p);
+  //   setGoals(g);
+  //   setFinancialProfile(fp);
+  //   setRecentPosts(posts.slice(0, 5));
+  //   setPostCount(pc);
+  //   setLoading(false);
+  // }, [user]);
   const loadData = useCallback(async () => {
     if (!user) return;
     setLoading(true);
-    const [p, g, fp, posts, pc] = await Promise.all([
-      upsertProfile(
-        user.id,
-        user.fullName ?? user.primaryEmailAddress?.emailAddress ?? "User",
-        user.imageUrl ?? undefined,
-      ),
+
+    const [g, fp, posts, pc] = await Promise.all([
       getGoals(user.id),
       getFinancialProfile(user.id),
       getPosts(),
       getUserPostCount(user.id),
     ]);
-    const latest = await getProfile(user.id);
-    setProfile(latest ?? p);
+
     setGoals(g);
     setFinancialProfile(fp);
     setRecentPosts(posts.slice(0, 5));
     setPostCount(pc);
     setLoading(false);
   }, [user]);
-
   useEffect(() => {
     loadData();
   }, [loadData]);
@@ -611,7 +634,7 @@ function DashboardInner() {
           const cfg = RING_CONFIG[newTier];
           setUpgradeToast({ name: cfg.name, icon: cfg.icon });
           const latest = await getProfile(user.id);
-          if (latest) setProfile(latest);
+          // if (latest) setProfile(latest);
         }
       }
     }
@@ -654,22 +677,38 @@ function DashboardInner() {
       ),
     },
     {
-      id: "community",
-      label: "Community",
-      icon: <Users className="w-4 h-4" />,
-      dividerAbove: true,
-      href: "/community",
+      id: "analysis",
+      label: "Analysis",
+      icon: <BarChart3 className="w-4 h-4" />,
     },
     {
-      id: "advisor",
+      id: "ai advisor",
       label: "AI Advisor",
       icon: <Bot className="w-4 h-4" />,
-      href: "/advisor",
+    },
+    // {
+    //   id: "community",
+    //   label: "Community",
+    //   icon: <Users className="w-4 h-4" />,
+    //   dividerAbove: true,
+    //   href: "/community",
+    // },
+    // {
+    //   id: "advisor",
+    //   label: "AI Advisor",
+    //   icon: <Bot className="w-4 h-4" />,
+    //   href: "/advisor",
+    // },
+    {
+      id: "tools",
+      label: "Tools",
+      icon: <ToolCase className="w-4 h-4" />,
+      dividerAbove: true,
     },
     {
       id: "profile",
       label: "Profile",
-      icon: <Users className="w-4 h-4" />, // or use a better icon like User, Settings, etc.
+      icon: <UserCircle className="w-4 h-4" />, // or use a better icon like User, Settings, etc.
     },
   ];
 
@@ -764,7 +803,7 @@ function DashboardInner() {
                         const cfg = RING_CONFIG[newTier];
                         setUpgradeToast({ name: cfg.name, icon: cfg.icon });
                         const latest = await getProfile(user!.id);
-                        if (latest) setProfile(latest);
+                        // if (latest) setProfile(latest);
                       }
                     },
                   );
@@ -779,7 +818,10 @@ function DashboardInner() {
               financialProfile={financialProfile}
             />
           )}
+          {activeItem === "tools" && <ToolsPageV2 />}
+          {activeItem === "analysis" && <AnalysisPage />}
           {activeItem === "profile" && <ProfilePage isInsideDashboard={true} />}
+          {activeItem === "ai advisor" && <ChatPageV2 />}
         </>
       )}
       {showGoalModal && (

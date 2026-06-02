@@ -14,6 +14,7 @@ import {
   Send,
   X,
   Loader2,
+  ToolCase,
 } from "lucide-react";
 import { AppShell, type NavItem } from "@/components/layout/Appshell";
 import { PostCard } from "@/components/community/PostCard";
@@ -40,6 +41,7 @@ import { isClerkConfigured } from "@/lib/clerk-config";
 import { RingBadge } from "@/components/community/RingBadge";
 import { formatDistanceToNow } from "date-fns";
 import { useUser as useClerkUser } from "@clerk/clerk-react";
+import ToolsPageV2 from "./Tools_v2";
 const TAG_LABELS: Record<string, string> = {
   "first-job": "First Job",
   debt: "Debt",
@@ -328,7 +330,14 @@ function ShareStoryModal({
 }
 
 // ── Main Community ────────────────────────────────────────────────────────────
-type ViewTab = "all" | "mine" | "liked" | "participated" | "saved" | "stories";
+type ViewTab =
+  | "all"
+  | "mine"
+  | "liked"
+  | "participated"
+  | "saved"
+  | "stories"
+  | "tools";
 
 function CommunityInner() {
   const clerk = isClerkConfigured ? useClerkUser() : { user: null };
@@ -440,6 +449,7 @@ function CommunityInner() {
         )}
 
         {/* Stories header with share button */}
+
         {activeItem === "stories" && (
           <div className="flex items-center justify-between mb-5">
             <div>

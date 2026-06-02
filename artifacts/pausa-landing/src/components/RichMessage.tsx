@@ -345,7 +345,7 @@ function parseContent(content: string): ParsedPart[] {
 interface RichMessageProps {
   content: string;
   isLatest?: boolean;
-  onConfirmAndAnalyze?: (summary: string) => void;
+  onConfirmAndAnalyze?: (summary: string, transactions: Transaction[]) => void;
 }
 
 export function RichMessage({

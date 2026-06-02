@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import multer from "multer";
-
+import PDFParser from "pdf2json";
 type PdfParseResult = { text: string; numpages: number };
 let _pdfParse: ((buf: Buffer) => Promise<PdfParseResult>) | null = null;
 
@@ -29,6 +29,33 @@ const upload = multer({
 /**
  * GET /agents — list all available agents
  */
+async function parsePDF(buffer: Buffer): Promise<PdfParseResult> {
+  return new Promise((resolve, reject) => {
+    const pdfParser = new PDFParser();
+
+    pdfParser.on("pdfParser_dataError", (errData: any) => {
+      reject(new Error(errData?.parserError?.message || "Failed to parse PDF"));
+    });
+
+    pdfParser.on("pdfParser_dataReady", () => {
+      try {
+        const rawText = pdfParser.getRawTextContent() || "";
+        // Rough page count
+        const numpages = rawText.split(/\f/).length || 1;
+
+        resolve({
+          text: rawText.trim(),
+          numpages,
+        });
+      } catch (err) {
+        reject(err);
+      }
+    });
+
+    // ✅ Use parseBuffer instead of loadPDF
+    pdfParser.parseBuffer(buffer);
+  });
+}
 router.get("/agents", async (_req, res): Promise<void> => {
   const agents = AGENT_CONFIGS.map((a) => ({
     id: a.id,
@@ -124,12 +151,13 @@ router.post(
         const { mimetype, buffer } = req.file;
 
         if (mimetype === "application/pdf") {
-          const parseFn = await getPdfParse();
-          const parsed = await parseFn(buffer);
-          const textContent = parsed.text.slice(0, 14000);
-          const pdfQuery = `${query}\n\n[Attached PDF — ${parsed.numpages} pages]:\n${textContent}`;
+          const parsed = await parsePDF(buffer);
+    const textContent = parsed.text.slice(0, 14000); // limit to avoid token overflow
 
-          const result = await runFinanceWorkflow(pdfQuery, conversationHistory, undefined, userProfile, currency);
+    const pdfQuery = `${query}\n\n[Attached PDF — ${parsed.numpages} pages]:\n${textContent}`;
+
+    const result = await runFinanceWorkflow(pdfQuery, conversationHistory, undefined, userProfile, currency);
+    
           const elapsed = Date.now() - start;
           const updatedHistory = [
             ...conversationHistory,

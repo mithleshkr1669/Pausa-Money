@@ -11,145 +11,345 @@ import * as zod from "zod";
  * Returns server health status
  * @summary Health check
  */
-export const HealthCheckResponse = zod.object({
-  status: zod.string(),
-});
+// export const HealthCheckResponse = zod.object({
+//   status: zod.string(),
+// });
 
 /**
  * Returns current LLM provider configuration
  * @summary Get LLM Settings
  */
-export const GetLlmSettingsResponse = zod.object({
-  provider: zod.enum(["gemini", "openai"]).describe("Active LLM provider"),
-  model: zod.string().describe("Currently configured model name"),
-  base_url: zod
-    .string()
-    .nullish()
-    .describe("Base URL for OpenAI-compatible providers"),
-  has_api_key: zod.boolean().describe("Whether API key is configured"),
-  gemini_configured: zod.boolean().describe("Whether Gemini API is configured"),
-  openai_configured: zod
-    .boolean()
-    .describe("Whether OpenAI-compatible provider is configured"),
-  available_providers: zod
-    .array(zod.string())
-    .describe("List of available providers"),
-  env_hints: zod
-    .object({
-      gemini: zod.string().optional(),
-      openai: zod.string().optional(),
-    })
-    .describe("Hints for configuring providers"),
-});
+// export const GetLlmSettingsResponse = zod.object({
+//   provider: zod.enum(["gemini", "openai"]).describe("Active LLM provider"),
+//   model: zod.string().describe("Currently configured model name"),
+//   base_url: zod
+//     .string()
+//     .nullish()
+//     .describe("Base URL for OpenAI-compatible providers"),
+//   has_api_key: zod.boolean().describe("Whether API key is configured"),
+//   gemini_configured: zod.boolean().describe("Whether Gemini API is configured"),
+//   openai_configured: zod
+//     .boolean()
+//     .describe("Whether OpenAI-compatible provider is configured"),
+//   available_providers: zod
+//     .array(zod.string())
+//     .describe("List of available providers"),
+//   env_hints: zod
+//     .object({
+//       gemini: zod.string().optional(),
+//       openai: zod.string().optional(),
+//     })
+//     .describe("Hints for configuring providers"),
+// });
 
 /**
  * Returns the last cached evaluation results
  * @summary Get Evaluation Results
  */
-export const GetEvalResultsResponse = zod.object({
-  run_id: zod.string(),
-  total_tests: zod.number(),
-  passed: zod.number(),
-  failed: zod.number(),
-  pass_rate: zod.number(),
-  avg_latency_ms: zod.number(),
-  category_scores: zod.record(zod.string(), zod.number()),
-  results: zod.array(
-    zod.object({
-      test_id: zod.string(),
-      query: zod.string(),
-      category: zod.string(),
-      passed: zod.boolean(),
-      score: zod.number(),
-      expected_domain: zod.string(),
-      actual_domain: zod.string(),
-      expected_agent: zod.string(),
-      actual_agent: zod.string(),
-      response_preview: zod.string(),
-      latency_ms: zod.number(),
-      error: zod.string().nullish(),
-    }),
-  ),
-  ran_at: zod.string(),
-});
+// export const GetEvalResultsResponse = zod.object({
+//   run_id: zod.string(),
+//   total_tests: zod.number(),
+//   passed: zod.number(),
+//   failed: zod.number(),
+//   pass_rate: zod.number(),
+//   avg_latency_ms: zod.number(),
+//   category_scores: zod.record(zod.string(), zod.number()),
+//   results: zod.array(
+//     zod.object({
+//       test_id: zod.string(),
+//       query: zod.string(),
+//       category: zod.string(),
+//       passed: zod.boolean(),
+//       score: zod.number(),
+//       expected_domain: zod.string(),
+//       actual_domain: zod.string(),
+//       expected_agent: zod.string(),
+//       actual_agent: zod.string(),
+//       response_preview: zod.string(),
+//       latency_ms: zod.number(),
+//       error: zod.string().nullish(),
+//     }),
+//   ),
+//   ran_at: zod.string(),
+// });
 
 /**
  * Run the evaluation suite to test agent performance
  * @summary Run Evaluation Suite
  */
-export const RunEvalBody = zod.object({}).passthrough();
+// export const RunEvalBody = zod.object({}).passthrough();
 
-export const RunEvalResponse = zod.object({
-  run_id: zod.string(),
-  total_tests: zod.number(),
-  passed: zod.number(),
-  failed: zod.number(),
-  pass_rate: zod.number(),
-  avg_latency_ms: zod.number(),
-  category_scores: zod.record(zod.string(), zod.number()),
-  results: zod.array(
-    zod.object({
-      test_id: zod.string(),
-      query: zod.string(),
-      category: zod.string(),
-      passed: zod.boolean(),
-      score: zod.number(),
-      expected_domain: zod.string(),
-      actual_domain: zod.string(),
-      expected_agent: zod.string(),
-      actual_agent: zod.string(),
-      response_preview: zod.string(),
-      latency_ms: zod.number(),
-      error: zod.string().nullish(),
-    }),
-  ),
-  ran_at: zod.string(),
-});
+// export const RunEvalResponse = zod.object({
+//   run_id: zod.string(),
+//   total_tests: zod.number(),
+//   passed: zod.number(),
+//   failed: zod.number(),
+//   pass_rate: zod.number(),
+//   avg_latency_ms: zod.number(),
+//   category_scores: zod.record(zod.string(), zod.number()),
+//   results: zod.array(
+//     zod.object({
+//       test_id: zod.string(),
+//       query: zod.string(),
+//       category: zod.string(),
+//       passed: zod.boolean(),
+//       score: zod.number(),
+//       expected_domain: zod.string(),
+//       actual_domain: zod.string(),
+//       expected_agent: zod.string(),
+//       actual_agent: zod.string(),
+//       response_preview: zod.string(),
+//       latency_ms: zod.number(),
+//       error: zod.string().nullish(),
+//     }),
+//   ),
+//   ran_at: zod.string(),
+// });
 
 /**
  * Send a query to the financial agent
  * @summary Query Agent
  */
-export const QueryAgentBody = zod.object({
-  query: zod.string(),
-  conversation_history: zod
-    .array(
-      zod.object({
-        role: zod.enum(["user", "assistant"]),
-        content: zod.string(),
-      }),
-    )
-    .optional(),
-});
+// export const QueryAgentBody = zod.object({
+//   query: zod.string(),
+//   conversation_history: zod
+//     .array(
+//       zod.object({
+//         role: zod.enum(["user", "assistant"]),
+//         content: zod.string(),
+//       }),
+//     )
+//     .optional(),
+// });
 
-export const QueryAgentResponse = zod.object({
-  query: zod.string(),
-  agent_name: zod.string(),
-  agent_id: zod.string(),
-  detected_domains: zod.array(zod.string()),
-  response: zod.string(),
-  conversation_history: zod.array(
-    zod.object({
-      role: zod.enum(["user", "assistant"]),
-      content: zod.string(),
-    }),
-  ),
-  skills_used: zod.array(zod.string()).optional(),
-  tools_used: zod.array(zod.string()).optional(),
-  processing_time_ms: zod.number(),
-});
+// export const QueryAgentResponse = zod.object({
+//   query: zod.string(),
+//   agent_name: zod.string(),
+//   agent_id: zod.string(),
+//   detected_domains: zod.array(zod.string()),
+//   response: zod.string(),
+//   conversation_history: zod.array(
+//     zod.object({
+//       role: zod.enum(["user", "assistant"]),
+//       content: zod.string(),
+//     }),
+//   ),
+//   skills_used: zod.array(zod.string()).optional(),
+//   tools_used: zod.array(zod.string()).optional(),
+//   processing_time_ms: zod.number(),
+// });
 
 /**
  * Analyze and categorize a financial query
  * @summary Analyze Query
  */
+// export const AnalyzeQueryBody = zod.object({
+//   query: zod.string(),
+// });
+
+// export const AnalyzeQueryResponse = zod.object({
+//   query: zod.string(),
+//   recommended_agent: zod.string(),
+//   confidence: zod.number(),
+//   detected_domains: zod.array(zod.string()).optional(),
+// });
+/**
+ * Generated by orval v8.9.1 🍺
+ * Do not edit manually.
+ * Api
+ * Personal Finance Agent API
+ * OpenAPI spec version: 0.1.0
+ */
+
+
+/**
+ * @summary Health check
+ */
+export const HealthCheckResponse = zod.object({
+  "status": zod.string()
+})
+
+
+/**
+ * @summary List all available agents
+ */
+export const ListAgentsResponse = zod.object({
+  "agents": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "domains": zod.array(zod.string())
+})),
+  "total": zod.number()
+})
+
+
+/**
+ * @summary Send a query to the finance agent workflow
+ */
+
+
+
+export const QueryAgentBody = zod.object({
+  "query": zod.string().min(1),
+  "conversation_history": zod.array(zod.object({
+  "role": zod.enum(['user', 'assistant', 'system']),
+  "content": zod.string()
+})).optional(),
+  "agent_id": zod.string().nullish()
+})
+
+export const QueryAgentResponse = zod.object({
+  "query": zod.string(),
+  "agent_name": zod.string(),
+  "agent_id": zod.string(),
+  "detected_domains": zod.array(zod.string()),
+  "response": zod.string(),
+  "conversation_history": zod.array(zod.object({
+  "role": zod.enum(['user', 'assistant', 'system']),
+  "content": zod.string()
+})),
+  "skills_used": zod.array(zod.string()),
+  "tools_used": zod.array(zod.string()),
+  "processing_time_ms": zod.number()
+})
+
+
+/**
+ * @summary Analyze a query to detect financial domains
+ */
 export const AnalyzeQueryBody = zod.object({
-  query: zod.string(),
-});
+  "query": zod.string()
+})
 
 export const AnalyzeQueryResponse = zod.object({
-  query: zod.string(),
-  recommended_agent: zod.string(),
-  confidence: zod.number(),
-  detected_domains: zod.array(zod.string()).optional(),
-});
+  "query": zod.string(),
+  "detected_domains": zod.array(zod.string()),
+  "recommended_agent": zod.string(),
+  "confidence": zod.number()
+})
+
+
+/**
+ * @summary List recent conversations
+ */
+export const ListConversationsResponse = zod.object({
+  "conversations": zod.array(zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "agent_name": zod.string(),
+  "message_count": zod.number(),
+  "created_at": zod.string(),
+  "last_message": zod.string()
+}))
+})
+
+
+/**
+ * @summary List all available financial tools
+ */
+export const ListToolsResponse = zod.object({
+  "tools": zod.array(zod.object({
+  "name": zod.string(),
+  "description": zod.string(),
+  "category": zod.string(),
+  "parameters": zod.record(zod.string(), zod.unknown()).optional()
+})),
+  "total": zod.number()
+})
+
+
+/**
+ * @summary Execute a financial calculation tool
+ */
+export const CalculateToolBody = zod.object({
+  "tool_name": zod.string(),
+  "parameters": zod.record(zod.string(), zod.unknown())
+})
+
+export const CalculateToolResponse = zod.object({
+  "tool_name": zod.string(),
+  "result": zod.record(zod.string(), zod.unknown()),
+  "formatted_output": zod.string()
+})
+
+
+/**
+ * @summary Run evaluation test suite
+ */
+export const RunEvalBody = zod.object({
+  "test_ids": zod.array(zod.string()).optional(),
+  "categories": zod.array(zod.string()).optional(),
+  "max_tests": zod.number().optional()
+})
+
+export const RunEvalResponse = zod.object({
+  "run_id": zod.string(),
+  "total_tests": zod.number(),
+  "passed": zod.number(),
+  "failed": zod.number(),
+  "pass_rate": zod.number(),
+  "avg_latency_ms": zod.number(),
+  "category_scores": zod.record(zod.string(), zod.number()),
+  "results": zod.array(zod.object({
+  "test_id": zod.string(),
+  "query": zod.string(),
+  "category": zod.string(),
+  "passed": zod.boolean(),
+  "score": zod.number(),
+  "expected_domain": zod.string(),
+  "actual_domain": zod.string(),
+  "expected_agent": zod.string(),
+  "actual_agent": zod.string(),
+  "response_preview": zod.string(),
+  "latency_ms": zod.number(),
+  "error": zod.string().nullable()
+})),
+  "ran_at": zod.string()
+})
+
+
+/**
+ * @summary Get latest evaluation results
+ */
+export const GetEvalResultsResponse = zod.object({
+  "run_id": zod.string(),
+  "total_tests": zod.number(),
+  "passed": zod.number(),
+  "failed": zod.number(),
+  "pass_rate": zod.number(),
+  "avg_latency_ms": zod.number(),
+  "category_scores": zod.record(zod.string(), zod.number()),
+  "results": zod.array(zod.object({
+  "test_id": zod.string(),
+  "query": zod.string(),
+  "category": zod.string(),
+  "passed": zod.boolean(),
+  "score": zod.number(),
+  "expected_domain": zod.string(),
+  "actual_domain": zod.string(),
+  "expected_agent": zod.string(),
+  "actual_agent": zod.string(),
+  "response_preview": zod.string(),
+  "latency_ms": zod.number(),
+  "error": zod.string().nullable()
+})),
+  "ran_at": zod.string()
+})
+
+
+/**
+ * @summary Get current LLM provider configuration
+ */
+export const GetLlmSettingsResponse = zod.object({
+  "provider": zod.string(),
+  "model": zod.string(),
+  "base_url": zod.string().nullish(),
+  "has_api_key": zod.boolean(),
+  "gemini_configured": zod.boolean(),
+  "openai_configured": zod.boolean(),
+  "available_providers": zod.array(zod.string()),
+  "env_hints": zod.record(zod.string(), zod.string())
+})
+
+

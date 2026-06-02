@@ -8,11 +8,12 @@ import { detectDomains, selectAgent, AGENT_CONFIGS } from "./config.js";
 import { SYSTEM_PROMPTS } from "./prompts.js";
 import { getRelevantSkillContent } from "../skill-loader.js";
 import { logger } from "../logger.js";
+import dotenv from "dotenv"
 
 // ---------------------------------------------------------------------------
 // LLM Provider config
 // ---------------------------------------------------------------------------
-
+dotenv.config()
 export type LLMProvider = "gemini" | "openai";
 
 export interface LLMConfig {
@@ -57,15 +58,15 @@ let _genAI: GoogleGenerativeAI | null = null;
 
 function getGenAI(): GoogleGenerativeAI {
   if (!_genAI) {
-    // const key = process.env.GEMINI_API_KEY;
-    const key = "AIzaSyBFuWa60pTRhPns2IFDcb26lT_Zs4UMsFM"
+    const key = process.env.GEMINI_API_KEY;
+    // const key = ""
     if (!key) throw new Error("GEMINI_API_KEY environment variable is not set");
     _genAI = new GoogleGenerativeAI(key);
   }
   return _genAI;
 }
 
-const GEMINI_MODELS = ["gemini-2.5-flash", "gemini-2.5-flash", "gemini-2.5-flash-8b"];
+const GEMINI_MODELS = ["gemini-3.5-flash", "gemini-3.5-flash", "gemini-2.5-flash-8b"];
 
 async function callGemini(
   systemPrompt: string,

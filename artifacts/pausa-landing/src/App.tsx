@@ -20,6 +20,9 @@ import { AnalysisPage } from "@/pages/Analysis";
 import { EvalPage } from "@/pages/Eval";
 import { SettingsPage } from "@/pages/Settings";
 import NotFound from "@/pages/not-found";
+import ProfilePage from "./pages/Profile";
+import ToolsPageV2 from "./pages/Tools_v2";
+import { ChatPageV2 } from "./pages/ChatV2";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false } },
@@ -31,16 +34,20 @@ function Routes() {
       <Route path="/" component={Home} />
       <Route path="/sign-in" component={SignInPage} />
       <Route path="/sign-in/sso-callback" component={SignInPage} />
+      <Route path="/sign-in/verify-email-address" component={SignInPage} />
+      <Route path="/sign-in/factor-one" component={SignInPage} />
+      <Route path="/sign-in/factor-two" component={SignInPage} />
       <Route path="/sign-up" component={SignUpPage} />
       <Route path="/sign-up/sso-callback" component={SignUpPage} />
+      <Route path="/sign-up/verify-email-address" component={SignUpPage} />
       <Route path="/onboarding" component={OnboardingPage} />
       <Route path="/community" component={CommunityPage} />
       <Route path="/community/ask" component={AskQuestionPage} />
       <Route path="/community/:id" component={CommunityPostPage} />
       <Route path="/dashboard" component={DashboardPage} />
-      <Route path="/advisor" component={AIAdvisorPage} />
+      <Route path="/advisor" component={ChatPageV2} />
       <Route path="/chat" component={ChatPage} />
-      <Route path="/tools" component={ToolsPage} />
+      <Route path="/tools" component={ToolsPageV2} />
       <Route path="/analysis" component={AnalysisPage} />
       <Route path="/eval" component={EvalPage} />
       <Route path="/settings" component={SettingsPage} />
