@@ -16,6 +16,7 @@ import {
   ChevronDown,
   UserCircle,
   ToolCase,
+  CreditCard,
 } from "lucide-react";
 import { AppShell, type NavItem } from "@/components/layout/Appshell";
 import { RingProgress } from "@/components/dashboard/RingProgress";
@@ -52,6 +53,7 @@ import { useProfile } from "@/hooks/useProfile";
 import ToolsPageV2 from "./Tools_v2";
 import { AnalysisPage } from "./Analysis";
 import { ChatPageV2 } from "./ChatV2";
+import CreditCardsPage from "./CreditCards";
 // ── Goals top bar ─────────────────────────────────────────────────────────────
 function GoalsTopBar({
   goals,
@@ -700,6 +702,11 @@ function DashboardInner() {
     //   href: "/advisor",
     // },
     {
+      id: "cards",
+      label: "Cards",
+      icon: <CreditCard className="w-4 h-4" />,
+    },
+    {
       id: "tools",
       label: "Tools",
       icon: <ToolCase className="w-4 h-4" />,
@@ -818,6 +825,7 @@ function DashboardInner() {
               financialProfile={financialProfile}
             />
           )}
+          {activeItem === "cards" && <CreditCardsPage />}
           {activeItem === "tools" && <ToolsPageV2 />}
           {activeItem === "analysis" && <AnalysisPage />}
           {activeItem === "profile" && <ProfilePage isInsideDashboard={true} />}

@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
@@ -27,6 +27,8 @@ import type {
   FinancialConfirmData,
   TransactionConfirmData,
 } from "@/components/FinancialConfirmCard";
+import { MicroloanWidget, fetchMicroloanOffers } from "@/components/chat/MicroloanWidget";
+import { InsuranceWidget, fetchInsuranceScore } from "@/components/chat/InsuranceWidget";
 
 interface ChartConfig {
   type: "bar" | "line" | "pie" | "area";
@@ -43,7 +45,9 @@ type ParsedPart =
   | { type: "text"; value: string }
   | { type: "chart"; value: ChartConfig }
   | { type: "confirm-financials"; value: FinancialConfirmData }
-  | { type: "confirm-transactions"; value: TransactionConfirmData };
+  | { type: "confirm-transactions"; value: TransactionConfirmData }
+  | { type: "microloan-params"; value: Record<string, unknown> }
+  | { type: "insurance-params"; value: Record<string, unknown> };
 
 const PALETTE = [
   "#00f5d4",
@@ -282,53 +286,55 @@ function ChartBlock({ config }: { config: ChartConfig }) {
 }
 
 /* ------------------------------------------------------------------ */
+/* Async widget fetchers                                               */
+/* ------------------------------------------------------------------ */
+function MicroloanFetcher({ params }: { params: Record<string, unknown> }) {
+  const [data, setData] = useState<Awaited<ReturnType<typeof fetchMicroloanOffers>>>(null);
+  useEffect(() => {
+    fetchMicroloanOffers(params as Parameters<typeof fetchMicroloanOffers>[0]).then(setData);
+  }, []);
+  if (!data) return <div className="mt-3 text-xs text-muted-foreground animate-pulse">Loading loan offers…</div>;
+  return <MicroloanWidget data={data} />;
+}
+
+function InsuranceFetcher({ params }: { params: Record<string, unknown> }) {
+  const [data, setData] = useState<Awaited<ReturnType<typeof fetchInsuranceScore>>>(null);
+  useEffect(() => {
+    fetchInsuranceScore(params as Parameters<typeof fetchInsuranceScore>[0]).then(setData);
+  }, []);
+  if (!data) return <div className="mt-3 text-xs text-muted-foreground animate-pulse">Calculating your insurance score…</div>;
+  return <InsuranceWidget data={data} />;
+}
+
+/* ------------------------------------------------------------------ */
 /* Parser                                                              */
 /* ------------------------------------------------------------------ */
 function parseContent(content: string): ParsedPart[] {
   const parts: ParsedPart[] = [];
-  // Match ```chart blocks, :::confirm-financials blocks, :::confirm-transactions blocks
   const regex =
-    /```chart\n([\s\S]*?)```|:::confirm-financials\n([\s\S]*?):::|:::confirm-transactions\n([\s\S]*?):::/g;
+    /```chart\n([\s\S]*?)```|:::confirm-financials\n([\s\S]*?):::|:::confirm-transactions\n([\s\S]*?):::|:::microloan-params\n([\s\S]*?):::|:::insurance-params\n([\s\S]*?):::/g;
   let lastIndex = 0;
   let match: RegExpExecArray | null;
 
   while ((match = regex.exec(content)) !== null) {
     if (match.index > lastIndex) {
-      parts.push({
-        type: "text",
-        value: content.slice(lastIndex, match.index),
-      });
+      parts.push({ type: "text", value: content.slice(lastIndex, match.index) });
     }
     if (match[1] !== undefined) {
-      // chart block
-      try {
-        parts.push({
-          type: "chart",
-          value: JSON.parse(match[1]) as ChartConfig,
-        });
-      } catch {
-        parts.push({ type: "text", value: match[0] });
-      }
+      try { parts.push({ type: "chart", value: JSON.parse(match[1]) as ChartConfig }); }
+      catch { parts.push({ type: "text", value: match[0] }); }
     } else if (match[2] !== undefined) {
-      // confirm-financials block
-      try {
-        parts.push({
-          type: "confirm-financials",
-          value: JSON.parse(match[2]) as FinancialConfirmData,
-        });
-      } catch {
-        parts.push({ type: "text", value: match[0] });
-      }
+      try { parts.push({ type: "confirm-financials", value: JSON.parse(match[2]) as FinancialConfirmData }); }
+      catch { parts.push({ type: "text", value: match[0] }); }
     } else if (match[3] !== undefined) {
-      // confirm-transactions block
-      try {
-        parts.push({
-          type: "confirm-transactions",
-          value: JSON.parse(match[3]) as TransactionConfirmData,
-        });
-      } catch {
-        parts.push({ type: "text", value: match[0] });
-      }
+      try { parts.push({ type: "confirm-transactions", value: JSON.parse(match[3]) as TransactionConfirmData }); }
+      catch { parts.push({ type: "text", value: match[0] }); }
+    } else if (match[4] !== undefined) {
+      try { parts.push({ type: "microloan-params", value: JSON.parse(match[4]) }); }
+      catch { parts.push({ type: "text", value: match[0] }); }
+    } else if (match[5] !== undefined) {
+      try { parts.push({ type: "insurance-params", value: JSON.parse(match[5]) }); }
+      catch { parts.push({ type: "text", value: match[0] }); }
     }
     lastIndex = match.index + match[0].length;
   }
@@ -372,6 +378,12 @@ export function RichMessage({
               onConfirmAndAnalyze={isLatest ? onConfirmAndAnalyze : undefined}
             />
           );
+        }
+        if (part.type === "microloan-params") {
+          return <MicroloanFetcher key={i} params={part.value} />;
+        }
+        if (part.type === "insurance-params") {
+          return <InsuranceFetcher key={i} params={part.value} />;
         }
         return (
           <ReactMarkdown key={i} remarkPlugins={[remarkGfm]}>

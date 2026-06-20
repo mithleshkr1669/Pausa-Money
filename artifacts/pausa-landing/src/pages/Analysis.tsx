@@ -959,6 +959,72 @@ function CompareTab({ analyses }: { analyses: MonthlyAnalysis[] }) {
           </tbody>
         </table>
       </div>
+
+      {/* Month-over-month insights */}
+      {analyses.length >= 2 && (() => {
+        const prev = analyses[analyses.length - 2];
+        const curr = analyses[analyses.length - 1];
+        const expDelta = curr.totalExpenses - prev.totalExpenses;
+        const savDelta = (curr.totalIncome - curr.totalExpenses) - (prev.totalIncome - prev.totalExpenses);
+        const srPrev = prev.totalIncome > 0 ? (prev.totalIncome - prev.totalExpenses) / prev.totalIncome * 100 : 0;
+        const srCurr = curr.totalIncome > 0 ? (curr.totalIncome - curr.totalExpenses) / curr.totalIncome * 100 : 0;
+
+        // Category-level diff
+        const catTotals = (a: typeof curr) =>
+          a.transactions.reduce<Record<string, number>>((acc, t) => {
+            if (t.type !== "expense") return acc;
+            acc[t.category] = (acc[t.category] ?? 0) + t.amount;
+            return acc;
+          }, {});
+        const prevCats = catTotals(prev);
+        const currCats = catTotals(curr);
+        const catDiffs = Object.keys({ ...prevCats, ...currCats })
+          .map((cat) => ({ cat, delta: (currCats[cat] ?? 0) - (prevCats[cat] ?? 0) }))
+          .filter((d) => Math.abs(d.delta) > 200)
+          .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))
+          .slice(0, 4);
+
+        const insights: { icon: string; text: string; type: "good" | "warn" | "info" }[] = [];
+
+        if (expDelta < 0) insights.push({ icon: "✅", text: `Expenses down ${fmt(Math.abs(expDelta))} vs ${prev.period}`, type: "good" });
+        else if (expDelta > 500) insights.push({ icon: "⚠️", text: `Expenses up ${fmt(expDelta)} vs ${prev.period}`, type: "warn" });
+
+        if (savDelta > 0) insights.push({ icon: "📈", text: `You saved ${fmt(savDelta)} more this month`, type: "good" });
+        else if (savDelta < -500) insights.push({ icon: "📉", text: `Savings dropped by ${fmt(Math.abs(savDelta))} — review spending`, type: "warn" });
+
+        if (srCurr >= 20 && srPrev < 20) insights.push({ icon: "🎯", text: `Savings rate crossed 20% — excellent financial health`, type: "good" });
+        else if (srCurr < 10) insights.push({ icon: "🔴", text: `Savings rate at ${srCurr.toFixed(1)}% — aim for at least 20%`, type: "warn" });
+
+        catDiffs.forEach(({ cat, delta }) => {
+          if (delta > 0) insights.push({ icon: "↗️", text: `${cat} spend up ${fmt(delta)} — watch this`, type: "warn" });
+          else insights.push({ icon: "↘️", text: `${cat} spend down ${fmt(Math.abs(delta))} — good control`, type: "good" });
+        });
+
+        if (insights.length === 0) insights.push({ icon: "🔍", text: "Spending pattern stable across both months", type: "info" });
+
+        return (
+          <div className="p-5 rounded-xl border border-border bg-card">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-4">
+              Month-over-Month Insights
+            </p>
+            <div className="space-y-2.5">
+              {insights.map((ins, i) => (
+                <div key={i} className={`flex items-start gap-3 px-3.5 py-2.5 rounded-lg text-sm border ${
+                  ins.type === "good" ? "border-emerald-500/20 bg-emerald-500/5 text-emerald-300"
+                  : ins.type === "warn" ? "border-amber-500/20 bg-amber-500/5 text-amber-300"
+                  : "border-white/8 bg-white/3 text-muted-foreground"
+                }`}>
+                  <span className="shrink-0 text-base leading-none mt-0.5">{ins.icon}</span>
+                  <span>{ins.text}</span>
+                </div>
+              ))}
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-4">
+              Comparing <span className="font-medium">{prev.period}</span> → <span className="font-medium">{curr.period}</span>. Upload a 3rd statement to see trend continuity.
+            </p>
+          </div>
+        );
+      })()}
     </div>
   );
 }

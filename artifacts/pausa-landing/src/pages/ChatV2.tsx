@@ -28,6 +28,7 @@ import {
   Transaction,
   useFinancialAnalysis,
 } from "@/hooks/useFinancialAnalysis";
+import { saveAnalysis } from "@/lib/analyses";
 
 const EXAMPLE_PROMPTS = [
   "My monthly salary is ₹60,000 and I spend about ₹35,000",
@@ -376,12 +377,30 @@ export function ChatPageV2({ onNavigate, userId, onGoalCreated }: ChatPageV2Prop
           .filter((t) => t.type === "expense")
           .reduce((s, t) => s + t.amount, 0);
 
+        const monthLabel = new Date().toLocaleDateString("en-IN", { month: "long", year: "numeric" });
         addAnalysis({
-          period: new Date().toLocaleDateString("en-IN", { month: "long", year: "numeric" }),
+          period: monthLabel,
           totalIncome,
           totalExpenses,
           transactions,
         });
+
+        // Also persist to Supabase (max 2 months enforced inside)
+        saveAnalysis(userId ?? null, {
+          user_id: userId ?? "anonymous",
+          month_label: monthLabel,
+          total_income: totalIncome,
+          total_expense: totalExpenses,
+          transactions: transactions.map((t) => ({
+            id: t.id,
+            date: t.date,
+            description: t.description,
+            amount: t.type === "expense" ? -t.amount : t.amount,
+            category: t.category,
+            needType: t.needType,
+          })),
+          confirmed: false,
+        }).catch(console.error);
 
         if (totalIncome > 0) {
           updateProfile({ monthlyIncome: totalIncome, monthlyExpenses: totalExpenses });

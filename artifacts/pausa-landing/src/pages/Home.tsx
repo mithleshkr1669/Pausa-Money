@@ -244,46 +244,193 @@ function HomeNav({
 }
 
 // ── Hero ──────────────────────────────────────────────────────────────────────
-function Hero() {
-  const [activeChat, setActiveChat] = useState(0);
-  const chatContainerRef = useRef<HTMLDivElement>(null);
-
+function HeroDashboardPreview() {
+  const [tick, setTick] = useState(0);
   useEffect(() => {
-    if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTop =
-        chatContainerRef.current.scrollHeight;
-    }
-  }, [activeChat]);
-  const chatMsgs = [
-    {
-      role: "user",
-      text: "I earn ₹45,000/month. Have ₹2L in savings. No investments. Where do I start?",
-    },
-    {
-      role: "ai",
-      text: "Great starting point. Here's your 3-step plan:\n1. Build ₹1.35L emergency fund (3× expenses)\n2. Start ₹5,000/month SIP in Nifty 50 index fund\n3. Open PPF for long-term tax-free growth",
-    },
-    {
-      role: "user",
-      text: "Which index fund? I'm confused about direct vs regular.",
-    },
-    {
-      role: "ai",
-      text: "Always Direct plan — saves you ~1% commission annually. On ₹5K/month over 10 years, that's ₹80,000+ more in your pocket. Try Zerodha Coin or Groww for direct plans.",
-    },
-  ];
-  useEffect(() => {
-    const t = setInterval(
-      () => setActiveChat((c) => (c + 1) % chatMsgs.length),
-      3000,
-    );
+    const t = setInterval(() => setTick((c) => c + 1), 2800);
     return () => clearInterval(t);
   }, []);
 
+  const insights = [
+    "💡 Switch to HDFC Millennia for Swiggy — save ₹300/mo",
+    "📈 Your savings rate improved 8% vs last month",
+    "🛡️ Term cover gap: ₹60L — 3 plans under ₹800/year",
+    "⚠️ Dining spend up ₹2,400 vs June — review discretionary",
+    "✅ Emergency fund on track — ₹42K of ₹1.8L target",
+  ];
+  const insight = insights[tick % insights.length];
+
+  const cardRewards = [
+    { name: "HDFC Millennia", bank: "HDFC", cashback: "10%", tag: "Best", color: "#0d1b4b", owned: true },
+    { name: "Swiggy HDFC", bank: "HDFC", cashback: "10%", tag: "Cap ₹1.5K", color: "#fc5200" },
+    { name: "AmEx Gold", bank: "AmEx", cashback: "5×", tag: "Dining", color: "#c5a028" },
+  ];
+
+  const monthBars = [
+    { label: "May", income: 62000, expense: 47000 },
+    { label: "Jun", income: 65000, expense: 43000 },
+  ];
+
+  return (
+    <div className="relative w-full">
+      {/* Ambient glow */}
+      <div className="absolute -inset-8 rounded-3xl blur-3xl opacity-20 pointer-events-none"
+        style={{ background: `radial-gradient(ellipse at 60% 40%, ${CY}, #6c5ce7 50%, transparent 80%)` }} />
+
+      <div className="relative space-y-3">
+        {/* Top row — two panels side by side */}
+        <div className="grid grid-cols-2 gap-3">
+          {/* Credit Card Optimizer */}
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="rounded-2xl p-3.5 border border-white/8"
+            style={{ background: "rgba(13,13,22,0.92)" }}
+          >
+            <div className="flex items-center gap-1.5 mb-3">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#00E5D4] animate-pulse" />
+              <span className="text-[10px] font-mono text-[#00E5D4] uppercase tracking-widest">Card Optimizer</span>
+            </div>
+            <p className="text-[10px] text-[#8c8070] mb-2">Best card for Swiggy</p>
+            <div className="space-y-1.5">
+              {cardRewards.map((c, i) => (
+                <div key={c.name} className={`flex items-center gap-2 p-1.5 rounded-lg ${i === 0 ? "border border-[#00E5D4]/20" : ""}`}
+                  style={i === 0 ? { background: `${CY}08` } : undefined}>
+                  <div className="w-5 h-5 rounded flex items-center justify-center text-[8px] font-black text-white shrink-0"
+                    style={{ background: c.color }}>
+                    {c.bank.slice(0, 2)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[10px] font-medium text-[#f0e8d8] truncate">{c.name}</p>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[#00E5D4] text-[10px] font-bold">{c.cashback}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+
+          {/* Insurance Health Score */}
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className="rounded-2xl p-3.5 border border-white/8 flex flex-col"
+            style={{ background: "rgba(13,13,22,0.92)" }}
+          >
+            <div className="flex items-center gap-1.5 mb-3">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#a78bfa] animate-pulse" />
+              <span className="text-[10px] font-mono text-[#a78bfa] uppercase tracking-widest">Insurance Score</span>
+            </div>
+            <div className="flex-1 flex flex-col items-center justify-center">
+              {/* Mini donut */}
+              <div className="relative w-16 h-16 mb-2">
+                <svg className="absolute inset-0 -rotate-90" width="64" height="64" viewBox="0 0 64 64">
+                  <circle cx="32" cy="32" r="24" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="5" />
+                  <circle cx="32" cy="32" r="24" fill="none" stroke="#e07050" strokeWidth="5"
+                    strokeDasharray={`${(58 / 100) * (2 * Math.PI * 24)} ${2 * Math.PI * 24}`}
+                    strokeLinecap="round" />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-sm font-black text-[#e07050]">58</span>
+                  <span className="text-[8px] text-[#8c8070] font-mono">/100</span>
+                </div>
+              </div>
+              <p className="text-[10px] font-semibold text-[#e07050]">At Risk</p>
+              <p className="text-[9px] text-[#8c8070] text-center mt-0.5">Term cover gap: ₹60L</p>
+            </div>
+          </motion.div>
+        </div>
+
+        {/* Middle — Month comparison */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.15 }}
+          className="rounded-2xl p-4 border border-white/8"
+          style={{ background: "rgba(13,13,22,0.92)" }}
+        >
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-[10px] font-mono text-emerald-400 uppercase tracking-widest">Statement Analysis</span>
+            </div>
+            <span className="text-[9px] text-[#00E5D4] bg-[#00E5D4]/10 px-2 py-0.5 rounded-full font-mono">+₹4,000 saved</span>
+          </div>
+          <div className="flex items-end gap-3">
+            {monthBars.map((m) => (
+              <div key={m.label} className="flex-1">
+                <p className="text-[9px] text-[#8c8070] mb-1.5 text-center">{m.label}</p>
+                <div className="space-y-1">
+                  {/* Income bar */}
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-8 text-[8px] text-[#8c8070]">Inc</div>
+                    <div className="flex-1 h-2.5 rounded-full bg-white/5 overflow-hidden">
+                      <motion.div className="h-full rounded-full" style={{ background: CY, width: `${(m.income / 70000) * 100}%` }}
+                        initial={{ width: 0 }} animate={{ width: `${(m.income / 70000) * 100}%` }} transition={{ duration: 0.8, delay: 0.3 }} />
+                    </div>
+                    <div className="w-8 text-[8px] text-[#f0e8d8] text-right">{(m.income / 1000).toFixed(0)}K</div>
+                  </div>
+                  {/* Expense bar */}
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-8 text-[8px] text-[#8c8070]">Exp</div>
+                    <div className="flex-1 h-2.5 rounded-full bg-white/5 overflow-hidden">
+                      <motion.div className="h-full rounded-full" style={{ background: "#e07050", width: `${(m.expense / 70000) * 100}%` }}
+                        initial={{ width: 0 }} animate={{ width: `${(m.expense / 70000) * 100}%` }} transition={{ duration: 0.8, delay: 0.4 }} />
+                    </div>
+                    <div className="w-8 text-[8px] text-[#f0e8d8] text-right">{(m.expense / 1000).toFixed(0)}K</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+            <div className="flex-1 border border-[#00E5D4]/15 rounded-xl p-2 text-center" style={{ background: `${CY}05` }}>
+              <p className="text-[9px] text-[#8c8070] mb-0.5">Savings↑</p>
+              <p className="text-sm font-black text-[#00E5D4]">+8%</p>
+              <p className="text-[8px] text-[#8c8070]">vs May</p>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Bottom — AI Insight ticker */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+          className="rounded-2xl px-4 py-3 border border-white/8 flex items-center gap-3"
+          style={{ background: "rgba(13,13,22,0.92)" }}
+        >
+          <div className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0"
+            style={{ background: `linear-gradient(135deg, ${CY}, ${CYG})` }}>
+            <svg className="w-3.5 h-3.5 text-[#09090f]" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.091z" />
+            </svg>
+          </div>
+          <AnimatePresence mode="wait">
+            <motion.p
+              key={tick}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.3 }}
+              className="text-xs text-[#c4b9aa] font-jakarta flex-1"
+            >
+              {insight}
+            </motion.p>
+          </AnimatePresence>
+          <span className="text-[10px] font-mono text-[#00E5D4]/50 shrink-0">Pausa AI</span>
+        </motion.div>
+      </div>
+    </div>
+  );
+}
+
+function Hero() {
   return (
     <section className="min-h-screen flex flex-col justify-center px-4 sm:px-6 pt-20 pb-10 max-w-6xl mx-auto">
       <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
-        {/* Left */}
+        {/* Left — Headline */}
         <div>
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -293,13 +440,13 @@ function Hero() {
             <div className="inline-flex items-center gap-2 bg-[#00E5D4]/8 border border-[#00E5D4]/20 rounded-full px-3 py-1.5 mb-6">
               <span className="w-1.5 h-1.5 rounded-full bg-[#00E5D4] animate-pulse" />
               <span className="text-xs font-mono text-[#00E5D4] uppercase tracking-widest">
-                Community × AI
+                AI · Cards · Loans · Insurance
               </span>
             </div>
             <h1 className="font-lora text-4xl sm:text-5xl lg:text-6xl font-bold text-[#f0e8d8] leading-[1.1] mb-6">
-              The financial
+              India's smartest
               <br />
-              elder sibling
+              personal finance
               <br />
               <span
                 className="bg-clip-text text-transparent"
@@ -307,13 +454,34 @@ function Hero() {
                   backgroundImage: `linear-gradient(135deg, ${CY} 0%, ${CYG} 100%)`,
                 }}
               >
-                you never had.
+                co-pilot.
               </span>
             </h1>
             <p className="text-base sm:text-lg text-[#8c8070] font-jakarta leading-relaxed mb-8 max-w-md">
-              AI that speaks your language. A community that's been through it.
-              India-specific advice you can actually act on — free.
+              Upload your bank statement. Compare months. Optimize credit card cashback.
+              Evaluate microloans. Calculate insurance cover.
+              All free. All India-first.
             </p>
+
+            {/* Feature chips */}
+            <div className="flex flex-wrap gap-2 mb-8">
+              {[
+                { label: "Bank Statement Analysis", color: CY },
+                { label: "Credit Card Optimizer", color: "#a78bfa" },
+                { label: "Microloan Matcher", color: "#f59e0b" },
+                { label: "Insurance Score", color: "#34d399" },
+              ].map((f) => (
+                <div
+                  key={f.label}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium"
+                  style={{ borderColor: `${f.color}30`, color: f.color, background: `${f.color}08` }}
+                >
+                  <span className="w-1 h-1 rounded-full" style={{ background: f.color }} />
+                  {f.label}
+                </div>
+              ))}
+            </div>
+
             <div className="flex flex-col sm:flex-row gap-3 mb-6">
               <Link href="/sign-up">
                 <button
@@ -323,134 +491,32 @@ function Hero() {
                     boxShadow: `0 8px 32px ${CY}30`,
                   }}
                 >
-                  Get my free plan →
+                  Start free →
                 </button>
               </Link>
               <button
                 onClick={scrollToDownload}
                 className="w-full sm:w-auto flex items-center justify-center gap-2 font-semibold px-8 py-3.5 rounded-full border border-[#00E5D4]/25 text-[#00E5D4] hover:bg-[#00E5D4]/8 transition-all text-base"
               >
-                <svg
-                  className="w-4 h-4"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-                  />
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                 </svg>
                 Android APK
               </button>
             </div>
             <p className="text-xs text-[#8c8070] font-jakarta">
-              No credit card required. Not a SEBI-registered advisor.
-              Educational guidance only.
+              Free forever. Not a SEBI-registered advisor. Educational guidance only.
             </p>
           </motion.div>
         </div>
 
-        {/* Right — AI Chat Demo */}
+        {/* Right — Live feature preview */}
         <motion.div
           initial={{ opacity: 0, x: 30 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.6, delay: 0.2 }}
         >
-          <div className="relative">
-            {/* Glow */}
-            <div
-              className="absolute inset-0 rounded-3xl blur-3xl opacity-15"
-              style={{
-                background: `radial-gradient(ellipse, ${CY}, transparent 70%)`,
-              }}
-            />
-            <div className="relative ai-card p-5 sm:p-6 rounded-3xl">
-              {/* Header */}
-              <div className="flex items-center gap-3 mb-5 pb-4 border-b border-white/8">
-                <div>
-                  <p className="text-sm font-semibold text-[#f0e8d8]">
-                    Pausa AI
-                  </p>
-                  <p className="text-xs text-[#00E5D4] font-mono">
-                    India-specific
-                  </p>
-                </div>
-                <div className="ml-auto flex gap-1">
-                  {[0, 1, 2].map((i) => (
-                    <div key={i} className="w-2 h-2 rounded-full bg-white/15" />
-                  ))}
-                </div>
-              </div>
-
-              {/* Chat bubbles */}
-              <div
-                ref={chatContainerRef}
-                className="space-y-3 h-[220px] overflow-auto"
-              >
-                <AnimatePresence>
-                  {chatMsgs.slice(0, activeChat + 1).map((msg, i) => (
-                    <motion.div
-                      key={i}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.4 }}
-                      className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-                    >
-                      <div
-                        className={`max-w-[85%] px-4 py-3 rounded-2xl text-sm font-jakarta leading-relaxed whitespace-pre-line ${
-                          msg.role === "user"
-                            ? "bg-white/8 text-[#f0e8d8] rounded-tr-sm"
-                            : "text-[#f0e8d8] rounded-tl-sm border border-[#00E5D4]/20"
-                        }`}
-                        style={
-                          msg.role === "ai"
-                            ? { background: `${CY}10` }
-                            : undefined
-                        }
-                      >
-                        {msg.role === "ai" && (
-                          <span className="text-[#00E5D4] font-mono text-xs block mb-1">
-                            Pausa AI
-                          </span>
-                        )}
-                        {msg.text}
-                      </div>
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-              </div>
-
-              {/* Input hint */}
-              <div className="mt-4 pt-4 border-t border-white/6 flex items-center gap-2">
-                <div className="flex-1 bg-white/5 rounded-full px-4 py-2.5 text-xs text-[#8c8070] font-jakarta">
-                  Ask about your money situation...
-                </div>
-                <div
-                  className="w-8 h-8 rounded-full flex items-center justify-center text-[#09090f] shrink-0"
-                  style={{ background: CY }}
-                >
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth={2}
-                    viewBox="0 0 24 24"
-                  >
-                    <g transform="rotate(90 12 12)">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
-                      />
-                    </g>
-                  </svg>
-                </div>
-              </div>
-            </div>
-          </div>
+          <HeroDashboardPreview />
         </motion.div>
       </div>
     </section>
