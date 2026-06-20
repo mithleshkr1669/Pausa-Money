@@ -22,6 +22,8 @@ import { useCurrency } from "@/hooks/useCurrency";
 import { useFinancialProfile } from "@/hooks/useFinancialProfile";
 import { getProfile, upsertProfile } from "@/lib/community";
 import { isClerkConfigured } from "@/lib/clerk-config";
+import { createGoal } from "@/lib/goals";
+import type { SavingsGoal } from "@/lib/goals";
 import {
   Transaction,
   useFinancialAnalysis,
@@ -74,6 +76,21 @@ const PAGE_TO_TAB: Record<string, string> = {
   profile: "profile",
 };
 
+// Maps AI goal categories → Supabase categories
+const AI_GOAL_CATEGORY_MAP: Record<string, string> = {
+  travel: "vacation",
+  vacation: "vacation",
+  emergency: "emergency",
+  home: "home",
+  education: "education",
+  retirement: "retirement",
+  vehicle: "vehicle",
+  wedding: "wedding",
+  business: "business",
+  medical: "medical",
+  other: "other",
+};
+
 const BASE_URL = import.meta.env.BASE_URL?.replace(/\/$/, "") || "";
 
 async function apiPost(path: string, body: unknown) {
@@ -88,13 +105,17 @@ async function apiPost(path: string, body: unknown) {
 interface ChatPageV2Props {
   /** If provided, AI navigation actions switch tabs via this callback instead of routing */
   onNavigate?: (tabId: string) => void;
+  /** Supabase userId — needed for real goal creation */
+  userId?: string;
+  /** Called after a goal is successfully created in Supabase */
+  onGoalCreated?: (goal: SavingsGoal) => void;
 }
 
-export function ChatPageV2({ onNavigate }: ChatPageV2Props = {}) {
+export function ChatPageV2({ onNavigate, userId, onGoalCreated }: ChatPageV2Props = {}) {
   const clerk = isClerkConfigured ? useClerkUser() : { user: null };
   const user = clerk.user;
   const [input, setInput] = useState("");
-  const { addAnalysis } = useFinancialAnalysis();
+  const { addAnalysis, getSummaryForAI } = useFinancialAnalysis();
   const { updateProfile, profile } = useFinancialProfile();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [currentResponse, setCurrentResponse] = useState<AgentQueryResponse | null>(null);
@@ -163,7 +184,29 @@ export function ChatPageV2({ onNavigate }: ChatPageV2Props = {}) {
           }
 
           if (action.type === "create_goal") {
-            await apiPost("/api/goals", action.data).catch(() => {});
+            const d = action.data as {
+              name?: string;
+              targetAmount?: number;
+              category?: string;
+              deadline?: string;
+              monthlyContribution?: number;
+            };
+            if (userId) {
+              const category =
+                AI_GOAL_CATEGORY_MAP[d.category?.toLowerCase() ?? ""] ?? "other";
+              const { data: newGoal, error: goalErr } = await createGoal(userId, {
+                name: d.name || "New Goal",
+                category,
+                target_amount: d.targetAmount ?? 0,
+                current_amount: 0,
+                monthly_contribution: d.monthlyContribution ?? 0,
+                target_date: d.deadline ?? null,
+              });
+              if (newGoal && onGoalCreated) onGoalCreated(newGoal);
+              if (goalErr) console.error("Goal creation failed:", goalErr);
+            } else {
+              console.warn("Goal creation skipped — no userId available");
+            }
           }
 
           if (action.type === "navigate" || action.type === "show_analysis") {
@@ -187,7 +230,7 @@ export function ChatPageV2({ onNavigate }: ChatPageV2Props = {}) {
         }
       }
     },
-    [updateProfile, onNavigate],
+    [updateProfile, onNavigate, userId, onGoalCreated],
   );
 
   const buildEnrichedQuery = useCallback(
@@ -205,9 +248,12 @@ export function ChatPageV2({ onNavigate }: ChatPageV2Props = {}) {
       if (profile.riskTolerance) lines.push(`Risk tolerance: ${profile.riskTolerance}`);
       if (!profile.profileComplete)
         lines.push("Note: User profile not fully set up — gather their financial details naturally");
+      // Include latest bank statement analysis summary if available
+      const analysisSummary = getSummaryForAI(currency.symbol);
+      if (analysisSummary) lines.push(analysisSummary);
       return lines.join("\n");
     },
-    [currency, profile],
+    [currency, profile, getSummaryForAI],
   );
 
   const handleSend = useCallback(

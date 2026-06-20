@@ -1,0 +1,3 @@
+- [Goal creation architecture](goal-creation.md) — AI emits `create_goal` action; must use Supabase `createGoal()` via `userId` + `onGoalCreated` callback from Dashboard, not the in-memory backend `/api/goals` route.
+- [PDF extraction model](pdf-extraction.md) — Use `gemini-2.0-flash` (stable) for Gemini vision PDF/image extraction in `agents.ts`; `gemini-2.5-flash` is unstable/may require preview model ID.
+- [Tab switching pattern](tab-switching.md) — ChatPageV2 takes `onNavigate`, `userId`, `onGoalCreated` from Dashboard; AI navigation uses `setActiveItem`, not wouter `navigate()`.

@@ -248,8 +248,12 @@ ${userProfile.riskTolerance ? `• Risk tolerance: ${userProfile.riskTolerance}`
     profileSection = `
 ═══════════════════════════════════════
 USER PROFILE: Not set up yet.
-- If your response needs income/expenses to be accurate, request it via the :::confirm-financials block.
+- The user hasn't shared their income or expenses yet.
 - Introduce yourself warmly and help them set up their financial profile naturally through conversation.
+- If your answer needs their income/expenses to be precise, ask directly in a friendly, natural way.
+- ALWAYS suggest: "You can also upload your bank statement as a PDF or image and I'll extract every transaction automatically — or just type your numbers here!"
+- Use the :::confirm-financials block when you want to capture their numbers cleanly.
+- Once you have their data, give them highly specific, personalized advice with exact amounts.
 ═══════════════════════════════════════
 `;
   }

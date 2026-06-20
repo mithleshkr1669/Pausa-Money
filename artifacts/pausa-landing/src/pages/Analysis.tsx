@@ -10,6 +10,8 @@ import {
   RefreshCcw,
   TrendingUp,
   Plus,
+  ShieldCheck,
+  AlertTriangle,
 } from "lucide-react";
 import {
   PieChart,
@@ -76,6 +78,87 @@ const NEED_TYPE_TEXT: Record<NeedType, string> = {
 };
 
 type Tab = "overview" | "transactions" | "subscriptions" | "compare";
+
+/* ------------------------------------------------------------------ */
+/* Confirmation Banner                                                 */
+/* ------------------------------------------------------------------ */
+const CONFIRMED_KEY = "pausa_confirmed_analyses_v1";
+
+function getConfirmedIds(): Set<string> {
+  try {
+    const s = localStorage.getItem(CONFIRMED_KEY);
+    if (s) return new Set(JSON.parse(s) as string[]);
+  } catch {}
+  return new Set();
+}
+
+function saveConfirmedIds(ids: Set<string>) {
+  try {
+    localStorage.setItem(CONFIRMED_KEY, JSON.stringify([...ids]));
+  } catch {}
+}
+
+function ConfirmationBanner({
+  analysis,
+  onConfirm,
+  onEditTransactions,
+}: {
+  analysis: MonthlyAnalysis;
+  onConfirm: () => void;
+  onEditTransactions: () => void;
+}) {
+  const { currency } = useCurrency();
+  const net = analysis.totalIncome - analysis.totalExpenses;
+  const fmt = (v: number) => fmtCurrencyRaw(v, currency);
+
+  return (
+    <div
+      className="rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center gap-4"
+      style={{
+        background: "linear-gradient(135deg, rgba(245,158,11,0.08), rgba(251,191,36,0.05))",
+        border: "1px solid rgba(245,158,11,0.25)",
+      }}
+    >
+      <div className="flex items-start gap-3 flex-1">
+        <AlertTriangle className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
+        <div>
+          <p className="text-sm font-semibold text-amber-300">Please verify your numbers</p>
+          <p className="text-xs text-amber-300/70 mt-0.5">
+            AI extracted these totals from your statement — confirm they look correct or edit
+            individual transactions.
+          </p>
+          <div className="flex gap-4 mt-2 text-xs font-medium">
+            <span className="text-emerald-400">Income: {fmt(analysis.totalIncome)}</span>
+            <span className="text-red-400">Expenses: {fmt(analysis.totalExpenses)}</span>
+            <span className={net >= 0 ? "text-primary" : "text-red-400"}>
+              Net: {net >= 0 ? "+" : ""}{fmt(Math.abs(net))}
+            </span>
+          </div>
+        </div>
+      </div>
+      <div className="flex gap-2 shrink-0">
+        <button
+          onClick={onEditTransactions}
+          className="px-3 py-1.5 rounded-lg text-xs font-medium border border-amber-400/30 text-amber-300 hover:bg-amber-400/10 transition-all"
+        >
+          Edit transactions
+        </button>
+        <button
+          onClick={onConfirm}
+          className="px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all"
+          style={{
+            background: "rgba(245,158,11,0.2)",
+            color: "rgb(251,191,36)",
+            border: "1px solid rgba(245,158,11,0.4)",
+          }}
+        >
+          <ShieldCheck className="w-3.5 h-3.5" />
+          Looks correct
+        </button>
+      </div>
+    </div>
+  );
+}
 
 /* ------------------------------------------------------------------ */
 /* Empty State                                                         */
@@ -888,6 +971,16 @@ export function AnalysisPage() {
   const { currency } = useCurrency();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("overview");
+  const [confirmedIds, setConfirmedIds] = useState<Set<string>>(getConfirmedIds);
+
+  const confirmAnalysis = (id: string) => {
+    setConfirmedIds((prev) => {
+      const next = new Set(prev);
+      next.add(id);
+      saveConfirmedIds(next);
+      return next;
+    });
+  };
 
   const analysis = selectedId
     ? analyses.find((a) => a.id === selectedId)
@@ -967,6 +1060,15 @@ export function AnalysisPage() {
         <EmptyState />
       ) : (
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+          {/* Confirmation Banner — shown until user verifies */}
+          {!confirmedIds.has(analysis.id) && (
+            <ConfirmationBanner
+              analysis={analysis}
+              onConfirm={() => confirmAnalysis(analysis.id)}
+              onEditTransactions={() => setActiveTab("transactions")}
+            />
+          )}
+
           {/* Summary Cards */}
           <div className="grid grid-cols-4 gap-3">
             {[

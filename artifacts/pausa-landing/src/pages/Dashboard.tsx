@@ -821,7 +821,13 @@ function DashboardInner() {
           {activeItem === "tools" && <ToolsPageV2 />}
           {activeItem === "analysis" && <AnalysisPage />}
           {activeItem === "profile" && <ProfilePage isInsideDashboard={true} />}
-          {activeItem === "ai advisor" && <ChatPageV2 onNavigate={setActiveItem} />}
+          {activeItem === "ai advisor" && (
+            <ChatPageV2
+              onNavigate={setActiveItem}
+              userId={user?.id ?? undefined}
+              onGoalCreated={handleGoalCreated}
+            />
+          )}
         </>
       )}
       {showGoalModal && (
