@@ -6,9 +6,7 @@ let _pdfParse: ((buf: Buffer) => Promise<PdfParseResult>) | null = null;
 
 async function getPdfParse(): Promise<(buf: Buffer) => Promise<PdfParseResult>> {
   if (!_pdfParse) {
-    // Import from lib path directly — the index.js runs test code when !module.parent
-    // which crashes with ENOENT on './test/data/05-versions-space.pdf'
-    // @ts-ignore — no type declarations for internal lib path
+    // @ts-ignore
     const mod = await import("pdf-parse/lib/pdf-parse.js");
     _pdfParse = (mod.default || mod) as (buf: Buffer) => Promise<PdfParseResult>;
   }
@@ -40,22 +38,17 @@ async function parsePDF(buffer: Buffer): Promise<PdfParseResult> {
     pdfParser.on("pdfParser_dataReady", () => {
       try {
         const rawText = pdfParser.getRawTextContent() || "";
-        // Rough page count
         const numpages = rawText.split(/\f/).length || 1;
-
-        resolve({
-          text: rawText.trim(),
-          numpages,
-        });
+        resolve({ text: rawText.trim(), numpages });
       } catch (err) {
         reject(err);
       }
     });
 
-    // ✅ Use parseBuffer instead of loadPDF
     pdfParser.parseBuffer(buffer);
   });
 }
+
 router.get("/agents", async (_req, res): Promise<void> => {
   const agents = AGENT_CONFIGS.map((a) => ({
     id: a.id,
@@ -77,7 +70,6 @@ router.post("/agents/query", async (req, res): Promise<void> => {
   }
 
   const { query, conversation_history = [] } = parsed.data;
-  // user_profile and currency are extra fields not in the Zod schema — read directly
   const userProfile = req.body.user_profile as UserProfile | undefined;
   const currency = req.body.currency as { code: string; symbol: string; name: string } | undefined;
   const start = Date.now();
@@ -101,6 +93,7 @@ router.post("/agents/query", async (req, res): Promise<void> => {
       conversation_history: updatedHistory,
       skills_used: result.skillsUsed,
       tools_used: result.toolsUsed,
+      actions: result.actions,
       processing_time_ms: elapsed,
     });
   } catch (err) {
@@ -152,12 +145,9 @@ router.post(
 
         if (mimetype === "application/pdf") {
           const parsed = await parsePDF(buffer);
-    const textContent = parsed.text.slice(0, 14000); // limit to avoid token overflow
-
-    const pdfQuery = `${query}\n\n[Attached PDF — ${parsed.numpages} pages]:\n${textContent}`;
-
-    const result = await runFinanceWorkflow(pdfQuery, conversationHistory, undefined, userProfile, currency);
-    
+          const textContent = parsed.text.slice(0, 14000);
+          const pdfQuery = `${query}\n\n[Attached PDF — ${parsed.numpages} pages]:\n${textContent}`;
+          const result = await runFinanceWorkflow(pdfQuery, conversationHistory, undefined, userProfile, currency);
           const elapsed = Date.now() - start;
           const updatedHistory = [
             ...conversationHistory,
@@ -173,6 +163,7 @@ router.post(
             conversation_history: updatedHistory,
             skills_used: result.skillsUsed,
             tools_used: result.toolsUsed,
+            actions: result.actions,
             processing_time_ms: elapsed,
           });
           return;
@@ -201,6 +192,7 @@ router.post(
         conversation_history: updatedHistory,
         skills_used: result.skillsUsed,
         tools_used: result.toolsUsed,
+        actions: result.actions,
         processing_time_ms: elapsed,
       });
     } catch (err) {

@@ -8,7 +8,6 @@ import {
   FileText,
   ImageIcon,
   Bot,
-  Clock,
   ChevronRight,
   AlertCircle,
   Users,
@@ -16,10 +15,12 @@ import {
   TrendingUp,
   BarChart3,
   Target,
+  CheckCircle2,
+  Sparkles,
+  Zap,
 } from "lucide-react";
 import { useUser as useClerkUser } from "@clerk/clerk-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Layout } from "@/components/layout";
 import { RichMessage } from "@/components/RichMessage";
 import { useCurrency } from "@/hooks/useCurrency";
 import { useFinancialProfile } from "@/hooks/useFinancialProfile";
@@ -31,26 +32,44 @@ import {
   Transaction,
   useFinancialAnalysis,
 } from "@/hooks/useFinancialAnalysis";
+import { useLocation } from "wouter";
+
 const EXAMPLE_PROMPTS = [
-  "How much should I save each month on a ₹50,000 income?",
+  "My monthly salary is ₹60,000 and I spend about ₹35,000",
+  "I want to save ₹5 lakhs for a car in 2 years",
+  "Show me the SIP calculator",
   "Should I pay off debt or start investing?",
-  "Calculate my SIP returns: ₹10k/mo for 20 years at 12%",
-  "Explain mutual funds vs fixed deposits",
-  "How do I build a 6-month emergency fund?",
-  "Analyze my tax deductions as a salaried employee",
+  "Create an emergency fund goal of ₹2 lakhs",
+  "Analyze my spending and open analysis page",
 ];
+
+interface AppAction {
+  type:
+    | "update_profile"
+    | "create_goal"
+    | "delete_goal"
+    | "navigate"
+    | "run_calculator"
+    | "show_analysis";
+  data: Record<string, unknown>;
+  label?: string;
+}
+
 interface ChatMessage extends Message {
   attachment?: {
     type: "image" | "pdf";
-    preview?: string; // for images
+    preview?: string;
     fileName?: string;
     fileSize?: number;
   };
+  actions?: AppAction[];
 }
+
 interface AttachedFile {
   file: File;
   preview?: string;
 }
+
 const navItems: NavItem[] = [
   {
     id: "overview",
@@ -73,7 +92,7 @@ const navItems: NavItem[] = [
     icon: <BarChart3 className="w-4 h-4" />,
   },
   {
-    id: "advisor", // ← This must match activeItem
+    id: "advisor",
     label: "AI Advisor",
     icon: <Bot className="w-4 h-4" />,
   },
@@ -89,41 +108,55 @@ const navItems: NavItem[] = [
     icon: <Users className="w-4 h-4" />,
   },
 ];
-type ViewTab =
-  | "all"
-  | "mine"
-  | "liked"
-  | "participated"
-  | "saved"
-  | "stories"
-  | "tools";
+
+type ViewTab = "all" | "mine" | "liked" | "participated" | "saved" | "stories" | "tools";
+
+const BASE_URL = import.meta.env.BASE_URL?.replace(/\/$/, "") || "";
+
+async function apiPost(path: string, body: unknown) {
+  const res = await fetch(`${BASE_URL}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  return res.json();
+}
+
 export function ChatPageV2() {
   const clerk = isClerkConfigured ? useClerkUser() : { user: null };
   const user = clerk.user;
+  const [, navigate] = useLocation();
   const [input, setInput] = useState("");
   const { addAnalysis } = useFinancialAnalysis();
-  const { updateProfile } = useFinancialProfile();
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [currentResponse, setCurrentResponse] =
-    useState<AgentQueryResponse | null>(null);
+  const { updateProfile, profile } = useFinancialProfile();
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [currentResponse, setCurrentResponse] = useState<AgentQueryResponse | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
   const [attachedFile, setAttachedFile] = useState<AttachedFile | null>(null);
+  const [executedActions, setExecutedActions] = useState<AppAction[]>([]);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [activeItem, setActiveItem] = useState<ViewTab>("all");
   const { currency } = useCurrency();
-  const { profile } = useFinancialProfile();
-  const [profiles, setProfile] =
-    useState<
-      ReturnType<typeof getProfile> extends Promise<infer T> ? T : never
-    >(null);
+  const [profiles, setProfile] = useState<ReturnType<typeof getProfile> extends Promise<infer T> ? T : never>(null);
   const queryAgent = useQueryAgent();
   const analyzeQuery = useAnalyzeQuery();
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, queryAgent.isPending]);
+
+  useEffect(() => {
+    if (user) {
+      upsertProfile(
+        user.id,
+        user.fullName ?? user.primaryEmailAddress?.emailAddress ?? "User",
+        user.imageUrl,
+      );
+      getProfile(user.id).then(setProfile);
+    }
+  }, [user]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -138,48 +171,86 @@ export function ChatPageV2() {
     }
     e.target.value = "";
   };
-  useEffect(() => {
-    if (user) {
-      upsertProfile(
-        user.id,
-        user.fullName ?? user.primaryEmailAddress?.emailAddress ?? "User",
-        user.imageUrl,
-      );
-      getProfile(user.id).then(setProfile);
-    }
-  }, [user]);
+
   const removeFile = () => setAttachedFile(null);
 
-  /** Build enriched query with profile context + currency for the AI */
+  /** Execute AI actions returned from the API */
+  const executeActions = useCallback(
+    async (actions: AppAction[]) => {
+      if (!actions || actions.length === 0) return;
+
+      for (const action of actions) {
+        try {
+          if (action.type === "update_profile") {
+            const data = action.data as Record<string, unknown>;
+            const patch: Record<string, unknown> = {};
+            if (data.name !== undefined) patch.name = String(data.name);
+            if (data.age !== undefined) patch.age = Number(data.age);
+            if (data.occupation !== undefined) patch.occupation = String(data.occupation);
+            if (data.monthlyIncome !== undefined) patch.monthlyIncome = Number(data.monthlyIncome);
+            if (data.monthlyExpenses !== undefined) patch.monthlyExpenses = Number(data.monthlyExpenses);
+            if (data.riskTolerance !== undefined) patch.riskTolerance = data.riskTolerance as "low" | "medium" | "high";
+            if (data.goals !== undefined) patch.goals = data.goals as string[];
+            updateProfile(patch as Parameters<typeof updateProfile>[0]);
+            await apiPost("/api/profile", patch);
+          }
+
+          if (action.type === "create_goal") {
+            await apiPost("/api/goals", action.data);
+          }
+
+          if (action.type === "navigate") {
+            const page = (action.data.page as string) || "";
+            const pageMap: Record<string, string> = {
+              tools: "/tools",
+              analysis: "/analysis",
+              dashboard: "/dashboard",
+              community: "/community",
+              profile: "/profile",
+            };
+            if (pageMap[page]) {
+              setTimeout(() => navigate(pageMap[page]), 600);
+            }
+          }
+
+          if (action.type === "show_analysis") {
+            setTimeout(() => navigate("/analysis"), 600);
+          }
+
+          if (action.type === "run_calculator") {
+            setTimeout(() => navigate("/tools"), 600);
+          }
+        } catch (err) {
+          console.error("Action execution failed:", action.type, err);
+        }
+      }
+
+      setExecutedActions((prev) => [...prev, ...actions]);
+    },
+    [updateProfile, navigate],
+  );
+
   const buildEnrichedQuery = useCallback(
     (text: string): string => {
       const lines: string[] = [text, "", "[AI CONTEXT — not from user]"];
-      lines.push(
-        `Currency: ${currency.name} (${currency.symbol}, ${currency.code})`,
-      );
+      lines.push(`Currency: ${currency.name} (${currency.symbol}, ${currency.code})`);
       if (profile.name) lines.push(`User name: ${profile.name}`);
       if (profile.monthlyIncome)
-        lines.push(
-          `Monthly income: ${currency.symbol}${profile.monthlyIncome.toLocaleString()}`,
-        );
+        lines.push(`Monthly income: ${currency.symbol}${profile.monthlyIncome.toLocaleString()}`);
       if (profile.monthlyExpenses)
-        lines.push(
-          `Monthly expenses: ${currency.symbol}${profile.monthlyExpenses.toLocaleString()}`,
-        );
+        lines.push(`Monthly expenses: ${currency.symbol}${profile.monthlyExpenses.toLocaleString()}`);
       if (profile.age) lines.push(`Age: ${profile.age}`);
       if (profile.occupation) lines.push(`Occupation: ${profile.occupation}`);
-      if (profile.goals?.length)
-        lines.push(`Goals: ${profile.goals.join(", ")}`);
-      if (profile.riskTolerance)
-        lines.push(`Risk tolerance: ${profile.riskTolerance}`);
+      if (profile.goals?.length) lines.push(`Goals: ${profile.goals.join(", ")}`);
+      if (profile.riskTolerance) lines.push(`Risk tolerance: ${profile.riskTolerance}`);
       if (!profile.profileComplete)
-        lines.push(
-          "Note: User profile not fully set up — gather their financial details naturally",
-        );
+        lines.push("Note: User profile not fully set up — gather their financial details naturally");
       return lines.join("\n");
     },
     [currency, profile],
   );
+
+  const [isFileLoading, setIsFileLoading] = useState(false);
 
   const handleSend = useCallback(
     async (text: string = input) => {
@@ -187,18 +258,12 @@ export function ChatPageV2() {
       if ((!trimmed && !attachedFile) || queryAgent.isPending) return;
 
       setApiError(null);
-      //   const userMessage: Message = {
-      //     role: "user",
-      //     content: trimmed || "(file attached)",
-      //   };
       const userMessage: ChatMessage = {
         role: "user",
         content: trimmed || "Uploaded a file",
         attachment: attachedFile
           ? {
-              type: attachedFile.file.type.startsWith("image/")
-                ? "image"
-                : "pdf",
+              type: attachedFile.file.type.startsWith("image/") ? "image" : "pdf",
               preview: attachedFile.preview,
               fileName: attachedFile.file.name,
               fileSize: attachedFile.file.size,
@@ -215,9 +280,7 @@ export function ChatPageV2() {
         setIsFileLoading(true);
         try {
           const formData = new FormData();
-          const queryText =
-            trimmed ||
-            "Please analyze this file and provide financial insights.";
+          const queryText = trimmed || "Please analyze this file and provide financial insights.";
           formData.append("query", buildEnrichedQuery(queryText));
           formData.append("conversation_history", JSON.stringify(messages));
           formData.append("file", fileToSend.file);
@@ -225,24 +288,32 @@ export function ChatPageV2() {
           formData.append("currency", JSON.stringify(currency));
 
           const start = Date.now();
-          const res = await fetch("/api/agents/query-file", {
+          const res = await fetch(`${BASE_URL}/api/agents/query-file`, {
             method: "POST",
             body: formData,
           });
           const data = (await res.json()) as AgentQueryResponse & {
             error?: string;
+            actions?: AppAction[];
           };
 
           if (!res.ok) throw new Error(data.error || "File analysis failed");
 
           const elapsed = Date.now() - start;
           setCurrentResponse({ ...data, processing_time_ms: elapsed });
-          setMessages(data.conversation_history);
+          const lastMsg = data.conversation_history[data.conversation_history.length - 1];
+          const updatedHistory: ChatMessage[] = [
+            ...data.conversation_history.slice(0, -1),
+            { ...lastMsg, actions: data.actions },
+          ];
+          setMessages(updatedHistory);
+          if (data.actions?.length) await executeActions(data.actions);
         } catch (err) {
-          const msg =
-            err instanceof Error ? err.message : "File analysis failed";
+          const msg = err instanceof Error ? err.message : "File analysis failed";
           setApiError(msg);
           setMessages((prev) => prev.slice(0, -1));
+        } finally {
+          setIsFileLoading(false);
         }
         return;
       }
@@ -257,9 +328,15 @@ export function ChatPageV2() {
             } as Parameters<typeof queryAgent.mutate>[0]["data"],
           },
           {
-            onSuccess: (data: AgentQueryResponse) => {
+            onSuccess: async (data: AgentQueryResponse & { actions?: AppAction[] }) => {
               setCurrentResponse(data);
-              setMessages(data.conversation_history);
+              const lastMsg = data.conversation_history[data.conversation_history.length - 1];
+              const updatedHistory: ChatMessage[] = [
+                ...data.conversation_history.slice(0, -1),
+                { ...lastMsg, actions: (data as any).actions },
+              ];
+              setMessages(updatedHistory);
+              if ((data as any).actions?.length) await executeActions((data as any).actions);
             },
             onError: (err: any) => {
               const msg =
@@ -273,24 +350,11 @@ export function ChatPageV2() {
       }
     },
     [
-      input,
-      attachedFile,
-      messages,
-      queryAgent,
-      analyzeQuery,
-      currency,
-      profile,
-      buildEnrichedQuery,
+      input, attachedFile, messages, queryAgent, analyzeQuery,
+      currency, profile, buildEnrichedQuery, executeActions,
     ],
   );
 
-  /** Called from TransactionConfirmCard when user confirms categories */
-  //   const handleConfirmAndAnalyze = useCallback(
-  //     (summary: string) => {
-  //       handleSend(summary);
-  //     },
-  //     [handleSend],
-  //   );
   const handleConfirmAndAnalyze = useCallback(
     (summary: string, transactions?: Transaction[]) => {
       if (transactions && transactions.length > 0) {
@@ -301,29 +365,22 @@ export function ChatPageV2() {
           .filter((t) => t.type === "expense")
           .reduce((s, t) => s + t.amount, 0);
 
-        // Persist to AnalysisContext → AnalysisPage reads this automatically
         addAnalysis({
-          period: new Date().toLocaleDateString("en-IN", {
-            month: "long",
-            year: "numeric",
-          }),
+          period: new Date().toLocaleDateString("en-IN", { month: "long", year: "numeric" }),
           totalIncome,
           totalExpenses,
           transactions,
         });
 
-        // Optionally sync profile income/expenses
         if (totalIncome > 0) {
-          updateProfile({
-            monthlyIncome: totalIncome,
-            monthlyExpenses: totalExpenses,
-          });
+          updateProfile({ monthlyIncome: totalIncome, monthlyExpenses: totalExpenses });
         }
       }
       handleSend(summary);
     },
-    [handleSend],
+    [handleSend, addAnalysis, updateProfile],
   );
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -339,54 +396,9 @@ export function ChatPageV2() {
   };
 
   const isPending = queryAgent.isPending;
-  const [isFileLoading, setIsFileLoading] = useState(false);
+
   return (
     <div className="flex flex-col h-full">
-      {/* Header */}
-      {/* <header
-        className="px-5 py-3.5 border-b border-border flex items-center justify-between shrink-0"
-        style={{ background: "hsl(0 0% 7%)" }}
-      >
-        <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg bg-primary/15 flex items-center justify-center border border-primary/20">
-            <Bot className="w-4 h-4 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-sm font-semibold leading-none">
-              {profile.name
-                ? `${profile.name}'s Financial Advisor`
-                : "Personal Finance Advisor"}
-            </h1>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              AI-powered · hyper-personalized
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2"> */}
-      {/* <div
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium"
-                style={{
-                  background: "rgba(0,245,212,0.08)",
-                  border: "1px solid rgba(0,245,212,0.18)",
-                  color: "hsl(173 100% 55%)",
-                }}
-              > */}
-      {/* <span className="font-bold">{currency.symbol}</span>
-                <span>{currency.code}</span> */}
-      {/* </div> */}
-      {/* {currentResponse && (
-            <div className="flex items-center gap-2 text-xs text-muted-foreground bg-white/4 border border-white/7 px-3 py-1.5 rounded-full">
-              <Clock className="w-3 h-3" />
-              <span>{currentResponse.processing_time_ms}ms</span>
-              <span className="w-px h-3 bg-border" />
-              <span className="text-primary">
-                {currentResponse.detected_domains?.join(", ")}
-              </span>
-            </div>
-          )}
-        </div>
-      </header> */}
-
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-6">
         <div className="max-w-3xl mx-auto space-y-5 pb-4">
@@ -396,23 +408,24 @@ export function ChatPageV2() {
                 <div
                   className="w-16 h-16 rounded-2xl mx-auto mb-5 flex items-center justify-center"
                   style={{
-                    background:
-                      "linear-gradient(135deg, rgba(0,245,212,0.15), rgba(64,224,255,0.1))",
+                    background: "linear-gradient(135deg, rgba(0,245,212,0.15), rgba(64,224,255,0.1))",
                     border: "1px solid rgba(0,245,212,0.2)",
                   }}
                 >
-                  <Bot className="w-8 h-8 text-primary" />
+                  <Sparkles className="w-8 h-8 text-primary" />
                 </div>
                 <h2 className="text-2xl font-semibold font-lora mb-2">
-                  {profile.name
-                    ? `Welcome back, ${profile.name}!`
-                    : "How can I help you today?"}
+                  {profile.name ? `Welcome back, ${profile.name}!` : "Hi, I'm FinAdvisor"}
                 </h2>
                 <p className="text-muted-foreground text-sm max-w-sm">
                   {profile.profileComplete
-                    ? `I know your income and expenses — my advice will be specific to your situation.`
-                    : "Ask anything about budgeting, investing, taxes, debt, or upload a PDF/image for analysis."}
+                    ? `I know your finances — just chat and I'll take action for you.`
+                    : "Tell me your income, goals, or anything financial. I'll update your profile and take real actions as we chat."}
                 </p>
+                <div className="mt-3 flex items-center justify-center gap-2 text-xs text-muted-foreground">
+                  <Zap className="w-3 h-3 text-primary" />
+                  <span>I can update your profile, create goals, open tools — all through chat</span>
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-2 w-full max-w-lg">
                 {EXAMPLE_PROMPTS.map((prompt, i) => (
@@ -433,41 +446,56 @@ export function ChatPageV2() {
           )}
 
           {messages.map((msg, i) => {
-            const isLatestAssistant =
-              msg.role === "assistant" && i === messages.length - 1;
-            const isUser = msg.role === "user";
+            const isLatestAssistant = msg.role === "assistant" && i === messages.length - 1;
             return (
               <div
                 key={i}
                 className={`flex message-in ${msg.role === "user" ? "justify-end" : "justify-start"}`}
               >
                 {msg.role === "assistant" ? (
-                  <div className="ai-card w-full px-6 py-5">
-                    <RichMessage
-                      content={msg.content}
-                      isLatest={isLatestAssistant}
-                      onConfirmAndAnalyze={
-                        isLatestAssistant ? handleConfirmAndAnalyze : undefined
-                      }
-                    />
-                    {isLatestAssistant && currentResponse && (
-                      <div className="mt-3 pt-3 border-t border-white/5 flex flex-wrap gap-1.5 text-xs">
-                        {(currentResponse.detected_domains as string[]).map(
-                          (d) => (
+                  <div className="w-full space-y-2">
+                    <div className="ai-card w-full px-6 py-5">
+                      <RichMessage
+                        content={msg.content}
+                        isLatest={isLatestAssistant}
+                        onConfirmAndAnalyze={isLatestAssistant ? handleConfirmAndAnalyze : undefined}
+                      />
+                      {isLatestAssistant && currentResponse && (
+                        <div className="mt-3 pt-3 border-t border-white/5 flex flex-wrap gap-1.5 text-xs">
+                          {(currentResponse.detected_domains as string[]).map((d) => (
                             <span
                               key={d}
                               className="px-2 py-0.5 rounded-full text-primary bg-primary/10 border border-primary/15 font-medium"
                             >
                               {d}
                             </span>
-                          ),
-                        )}
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Action chips — show what the AI did */}
+                    {(msg as ChatMessage).actions && (msg as ChatMessage).actions!.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 px-1">
+                        {(msg as ChatMessage).actions!.map((action, ai) => (
+                          <div
+                            key={ai}
+                            className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium"
+                            style={{
+                              background: "rgba(0,245,212,0.08)",
+                              border: "1px solid rgba(0,245,212,0.2)",
+                              color: "hsl(173 100% 65%)",
+                            }}
+                          >
+                            <CheckCircle2 className="w-3 h-3" />
+                            <span>{action.label || action.type.replace(/_/g, " ")}</span>
+                          </div>
+                        ))}
                       </div>
                     )}
                   </div>
                 ) : (
                   <div className="max-w-[75%] flex flex-col items-end gap-1.5">
-                    {/* Attachment preview */}
                     {(msg as ChatMessage).attachment &&
                       ((msg as ChatMessage).attachment!.type === "image" &&
                       (msg as ChatMessage).attachment!.preview ? (
@@ -501,22 +529,16 @@ export function ChatPageV2() {
                             </p>
                             <p className="text-[11px] text-muted-foreground mt-0.5">
                               PDF ·{" "}
-                              {(
-                                ((msg as ChatMessage).attachment!.fileSize ||
-                                  0) / 1024
-                              ).toFixed(0)}{" "}
-                              KB
+                              {(((msg as ChatMessage).attachment!.fileSize || 0) / 1024).toFixed(0)} KB
                             </p>
                           </div>
                         </div>
                       ))}
-                    {/* Text bubble — only show if there's actual text */}
                     {msg.content && msg.content !== "Uploaded a file" && (
                       <div
                         className="px-4 py-3 rounded-2xl rounded-br-sm text-sm leading-relaxed"
                         style={{
-                          background:
-                            "linear-gradient(135deg, rgba(0,245,212,0.18), rgba(64,224,255,0.12))",
+                          background: "linear-gradient(135deg, rgba(0,245,212,0.18), rgba(64,224,255,0.12))",
                           border: "1px solid rgba(0,245,212,0.25)",
                           color: "hsl(43 17% 93%)",
                         }}
@@ -530,7 +552,7 @@ export function ChatPageV2() {
             );
           })}
 
-          {isPending && (
+          {(isPending || isFileLoading) && (
             <div className="flex justify-start message-in">
               <div className="ai-card px-6 py-5 w-full">
                 <div className="flex items-center gap-2 mb-3">
@@ -544,32 +566,11 @@ export function ChatPageV2() {
                     ))}
                   </div>
                   <span className="text-xs text-muted-foreground">
-                    {analyzeQuery.data
-                      ? `Analyzing ${analyzeQuery.data.recommended_agent}...`
+                    {isFileLoading
+                      ? "Reading your file..."
+                      : analyzeQuery.data
+                      ? `Working on it with ${analyzeQuery.data.recommended_agent}...`
                       : "Thinking..."}
-                  </span>
-                </div>
-                <Skeleton className="h-3 w-3/4 mb-2" />
-                <Skeleton className="h-3 w-full mb-2" />
-                <Skeleton className="h-3 w-5/6" />
-              </div>
-            </div>
-          )}
-          {isFileLoading && (
-            <div className="flex justify-start message-in">
-              <div className="ai-card px-6 py-5 w-full">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="flex gap-1">
-                    {[0, 1, 2].map((n) => (
-                      <div
-                        key={n}
-                        className="pulse-dot w-2 h-2 rounded-full bg-primary"
-                        style={{ animationDelay: `${n * 0.2}s` }}
-                      />
-                    ))}
-                  </div>
-                  <span className="text-xs text-muted-foreground">
-                    Reading your file...
                   </span>
                 </div>
                 <Skeleton className="h-3 w-3/4 mb-2" />
@@ -604,11 +605,7 @@ export function ChatPageV2() {
           {attachedFile && (
             <div className="mb-2 flex items-center gap-2 px-3 py-2 rounded-xl border border-primary/20 bg-primary/6 w-fit">
               {attachedFile.preview ? (
-                <img
-                  src={attachedFile.preview}
-                  alt=""
-                  className="w-8 h-8 rounded object-cover"
-                />
+                <img src={attachedFile.preview} alt="" className="w-8 h-8 rounded object-cover" />
               ) : (
                 <div className="w-8 h-8 rounded bg-primary/10 flex items-center justify-center">
                   <FileText className="w-4 h-4 text-primary" />
@@ -620,18 +617,11 @@ export function ChatPageV2() {
                 </span>
                 <span className="text-xs text-muted-foreground">
                   {attachedFile.file.type.startsWith("image/") ? (
-                    <>
-                      <ImageIcon className="w-2.5 h-2.5 inline mr-1" />
-                      Image
-                    </>
+                    <><ImageIcon className="w-2.5 h-2.5 inline mr-1" />Image</>
                   ) : (
-                    <>
-                      <FileText className="w-2.5 h-2.5 inline mr-1" />
-                      PDF
-                    </>
+                    <><FileText className="w-2.5 h-2.5 inline mr-1" />PDF</>
                   )}
-                  {" · "}
-                  {(attachedFile.file.size / 1024).toFixed(0)} KB
+                  {" · "}{(attachedFile.file.size / 1024).toFixed(0)} KB
                 </span>
               </div>
               <button
@@ -674,8 +664,8 @@ export function ChatPageV2() {
               onKeyDown={handleKeyDown}
               placeholder={
                 profile.name
-                  ? `Ask ${profile.name}'s advisor anything...`
-                  : `Ask about finance in ${currency.symbol} ${currency.code}...`
+                  ? `Tell ${profile.name}'s advisor what to do...`
+                  : "Tell me your income, a goal, or ask anything financial..."
               }
               className="flex-1 resize-none bg-transparent border-none outline-none text-sm text-foreground placeholder:text-muted-foreground min-h-6 max-h-30 leading-relaxed py-0.5"
               rows={1}
@@ -702,9 +692,9 @@ export function ChatPageV2() {
             </button>
           </div>
 
-          <p className="text-center mt-2 text-[11px] text-muted-foreground/50">
-            AI can make mistakes. Verify important financial decisions with a
-            licensed professional.
+          <p className="text-center text-[10px] text-muted-foreground mt-1.5">
+            <Zap className="w-2.5 h-2.5 inline mr-1 text-primary" />
+            FinAdvisor can update your profile, create goals, and open tools — all from this chat
           </p>
         </div>
       </div>

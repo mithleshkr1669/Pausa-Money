@@ -34,6 +34,18 @@ export interface UserProfile {
   profileComplete?: boolean;
 }
 
+export interface AppAction {
+  type:
+    | "update_profile"
+    | "create_goal"
+    | "delete_goal"
+    | "navigate"
+    | "run_calculator"
+    | "show_analysis";
+  data: Record<string, unknown>;
+  label?: string;
+}
+
 export function getLLMConfig(): LLMConfig {
   const provider = (process.env.LLM_PROVIDER as LLMProvider) || "gemini";
   if (provider === "openai") {
@@ -59,14 +71,13 @@ let _genAI: GoogleGenerativeAI | null = null;
 function getGenAI(): GoogleGenerativeAI {
   if (!_genAI) {
     const key = process.env.GEMINI_API_KEY;
-    // const key = ""
     if (!key) throw new Error("GEMINI_API_KEY environment variable is not set");
     _genAI = new GoogleGenerativeAI(key);
   }
   return _genAI;
 }
 
-const GEMINI_MODELS = ["gemini-3.5-flash", "gemini-3.5-flash", "gemini-2.5-flash-8b"];
+const GEMINI_MODELS = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-flash-8b"];
 
 async function callGemini(
   systemPrompt: string,
@@ -176,6 +187,30 @@ async function callLLM(
 }
 
 // ---------------------------------------------------------------------------
+// Parse action blocks from AI response
+// ---------------------------------------------------------------------------
+
+function parseActions(rawResponse: string): { cleanResponse: string; actions: AppAction[] } {
+  const actions: AppAction[] = [];
+  const actionBlockRegex = /:::action\s*([\s\S]*?):::/g;
+
+  let match;
+  while ((match = actionBlockRegex.exec(rawResponse)) !== null) {
+    try {
+      const parsed = JSON.parse(match[1].trim());
+      if (parsed.type) {
+        actions.push(parsed as AppAction);
+      }
+    } catch {
+      // invalid JSON in action block — skip
+    }
+  }
+
+  const cleanResponse = rawResponse.replace(/:::action\s*[\s\S]*?:::/g, "").trim();
+  return { cleanResponse, actions };
+}
+
+// ---------------------------------------------------------------------------
 // Build hyper-personalized system prompt
 // ---------------------------------------------------------------------------
 
@@ -236,6 +271,71 @@ HYPER-PERSONALIZATION RULES — THIS IS CRITICAL:
 6. Show empathy around financial stress, celebrate progress, acknowledge challenges.
 7. Proactively spot opportunities: "Based on your numbers, you could invest ₹3,000 more by trimming entertainment"
 8. Always end with 2-3 specific, actionable next steps with exact amounts and timelines.
+
+═══════════════════════════════════════
+AI ACTOR SYSTEM — YOU CAN TAKE REAL ACTIONS:
+═══════════════════════════════════════
+
+You are not just a chatbot — you are an AI actor who can PERFORM ACTIONS inside the app on behalf of the user.
+When the user says something that implies they want to update data, create goals, or navigate — DO IT.
+
+Emit action blocks (invisible to the user, processed by the app) ALONGSIDE your response text:
+
+ACTION FORMAT:
+:::action
+{"type": "ACTION_TYPE", "data": {...}, "label": "human-readable description"}
+:::
+
+AVAILABLE ACTIONS:
+
+1. UPDATE PROFILE — when user tells you their income, expenses, name, age, occupation, risk tolerance:
+:::action
+{"type": "update_profile", "data": {"monthlyIncome": 50000, "monthlyExpenses": 30000, "name": "Rahul", "age": 28, "occupation": "Software Engineer", "riskTolerance": "medium"}, "label": "Updated your financial profile"}
+:::
+Only include the fields the user actually mentioned. Do NOT fabricate values.
+
+2. CREATE GOAL — when user wants to save for something specific:
+:::action
+{"type": "create_goal", "data": {"name": "Emergency Fund", "targetAmount": 100000, "category": "emergency", "deadline": "2025-12-31"}, "label": "Created goal: Emergency Fund"}
+:::
+Categories: emergency | home | education | travel | retirement | vehicle | wedding | other
+
+3. NAVIGATE — when user asks to see a section, tool, or page:
+:::action
+{"type": "navigate", "data": {"page": "tools"}, "label": "Opening Tools"}
+:::
+Pages: tools | analysis | dashboard | community | profile
+
+4. RUN CALCULATOR — when user wants a specific calculation tool:
+:::action
+{"type": "run_calculator", "data": {"tool": "sip", "params": {"monthlyAmount": 10000, "years": 10, "rate": 12}}, "label": "Opening SIP Calculator"}
+:::
+Tools: sip | budget | mortgage | debt | emergency
+
+5. SHOW ANALYSIS — when user asks about their spending or analysis:
+:::action
+{"type": "show_analysis", "data": {}, "label": "Opening Analysis"}
+:::
+
+RULES FOR ACTIONS:
+- ALWAYS emit an action when the user provides profile data — don't just acknowledge it, SAVE it
+- Emit the action BEFORE your response text so it processes first
+- You can emit multiple actions in one response
+- After emitting an action, confirm it in your text: "I've updated your profile with ₹50,000 income ✓"
+- Never make up numbers — only use what the user explicitly stated
+
+EXAMPLES:
+User: "My monthly salary is ₹65,000 and I spend about ₹40,000"
+→ Emit update_profile action with monthlyIncome:65000, monthlyExpenses:40000
+→ Then give personalized advice based on their ₹25,000 surplus
+
+User: "I want to save ₹5 lakhs for a car in 2 years"
+→ Emit create_goal action with name:"Car Fund", targetAmount:500000, category:"vehicle"
+→ Then explain how much to save per month
+
+User: "Show me the SIP calculator"
+→ Emit navigate action with page:"tools" AND run_calculator action with tool:"sip"
+→ Then say you've opened the SIP calculator for them
 
 ═══════════════════════════════════════
 HUMAN-IN-THE-LOOP PROTOCOL (MANDATORY):
@@ -325,6 +425,7 @@ export async function runFinanceWorkflow(
   detectedDomains: string[];
   skillsUsed: string[];
   toolsUsed: string[];
+  actions: AppAction[];
 }> {
   const domains = detectDomains(userQuery);
   const agentConfig = selectAgent(domains);
@@ -335,15 +436,17 @@ export async function runFinanceWorkflow(
   const skillContent = getRelevantSkillContent(domains);
   const enrichedPrompt = buildSystemPrompt(basePrompt, skillContent, userProfile, currency);
 
-  const response = await callLLM(enrichedPrompt, userQuery, conversationHistory, attachments);
+  const rawResponse = await callLLM(enrichedPrompt, userQuery, conversationHistory, attachments);
+  const { cleanResponse, actions } = parseActions(rawResponse);
 
   return {
-    response,
+    response: cleanResponse,
     agentId: agentConfig.id,
     agentName: agentConfig.name,
     detectedDomains: domains,
     skillsUsed: domains.map((d) => d.toLowerCase()),
     toolsUsed: [],
+    actions,
   };
 }
 
