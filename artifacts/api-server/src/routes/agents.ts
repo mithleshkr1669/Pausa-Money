@@ -1,21 +1,10 @@
 import { Router, type IRouter } from "express";
 import multer from "multer";
-import PDFParser from "pdf2json";
-type PdfParseResult = { text: string; numpages: number };
-let _pdfParse: ((buf: Buffer) => Promise<PdfParseResult>) | null = null;
-
-async function getPdfParse(): Promise<(buf: Buffer) => Promise<PdfParseResult>> {
-  if (!_pdfParse) {
-    // @ts-ignore
-    const mod = await import("pdf-parse/lib/pdf-parse.js");
-    _pdfParse = (mod.default || mod) as (buf: Buffer) => Promise<PdfParseResult>;
-  }
-  return _pdfParse;
-}
-
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { runFinanceWorkflow, type UserProfile } from "../lib/finance/workflow.js";
 import { detectDomains, selectAgent, AGENT_CONFIGS } from "../lib/finance/config.js";
 import { QueryAgentBody, AnalyzeQueryBody } from "@workspace/api-zod";
+import { logger } from "../lib/logger.js";
 
 const router: IRouter = Router();
 
@@ -24,31 +13,94 @@ const upload = multer({
   limits: { fileSize: 20 * 1024 * 1024 },
 });
 
+// ---------------------------------------------------------------------------
+// Gemini vision extraction — used for both PDFs and images
+// ---------------------------------------------------------------------------
+
+let _genAI: GoogleGenerativeAI | null = null;
+function getGenAI(): GoogleGenerativeAI {
+  if (!_genAI) {
+    const key = process.env.GEMINI_API_KEY;
+    if (!key) throw new Error("GEMINI_API_KEY environment variable is not set");
+    _genAI = new GoogleGenerativeAI(key);
+  }
+  return _genAI;
+}
+
+/**
+ * Use Gemini vision to extract transaction text from a PDF or image file.
+ * Returns pipe-separated transaction rows for bank statements,
+ * or raw extracted text for other documents.
+ */
+async function extractTextWithGemini(
+  buffer: Buffer,
+  mimeType: string
+): Promise<string> {
+  const genAI = getGenAI();
+  const model = genAI.getGenerativeModel({
+    model: "gemini-2.5-flash",
+    generationConfig: { maxOutputTokens: 65536, temperature: 0 },
+  });
+
+  const result = await model.generateContent([
+    {
+      text: `You are a precise data extraction engine for financial documents.
+
+If this is a bank statement or transaction list, extract EVERY transaction row.
+Output format — one line per transaction, pipe-separated:
+DATE | DESCRIPTION | DEBIT | CREDIT | BALANCE
+
+Strict rules for bank statements:
+- Scan ALL pages completely before outputting
+- Include every single transaction row, none skipped
+- If DEBIT column is empty → write 0
+- If CREDIT column is empty → write 0
+- Preserve exact decimal amounts (e.g. 1234.56 not 1235)
+- Do NOT include: headers, account info, opening/closing balance summary rows
+- Do NOT add commentary, numbering, or blank lines
+
+If this is NOT a bank statement (e.g. bill, invoice, receipt):
+- Extract all relevant financial information as structured text
+- Include dates, amounts, descriptions, totals
+
+Output ONLY the extracted content.`,
+    },
+    {
+      inlineData: {
+        mimeType,
+        data: buffer.toString("base64"),
+      },
+    },
+  ]);
+
+  const finishReason = result.response.candidates?.[0]?.finishReason;
+  const extracted = result.response.text();
+  const lineCount = extracted.split("\n").filter((l) => l.trim()).length;
+
+  logger.info({ lineCount, finishReason, mimeType }, "Gemini vision extraction complete");
+
+  if (finishReason === "MAX_TOKENS") {
+    throw new Error(
+      `Document too large — extraction was truncated at ${lineCount} lines. Try splitting the PDF into smaller sections.`
+    );
+  }
+
+  if (!extracted.trim()) {
+    throw new Error(
+      "No content could be extracted from the file. The document may be encrypted or unreadable."
+    );
+  }
+
+  return extracted;
+}
+
+// ---------------------------------------------------------------------------
+// Routes
+// ---------------------------------------------------------------------------
+
 /**
  * GET /agents — list all available agents
  */
-async function parsePDF(buffer: Buffer): Promise<PdfParseResult> {
-  return new Promise((resolve, reject) => {
-    const pdfParser = new PDFParser();
-
-    pdfParser.on("pdfParser_dataError", (errData: any) => {
-      reject(new Error(errData?.parserError?.message || "Failed to parse PDF"));
-    });
-
-    pdfParser.on("pdfParser_dataReady", () => {
-      try {
-        const rawText = pdfParser.getRawTextContent() || "";
-        const numpages = rawText.split(/\f/).length || 1;
-        resolve({ text: rawText.trim(), numpages });
-      } catch (err) {
-        reject(err);
-      }
-    });
-
-    pdfParser.parseBuffer(buffer);
-  });
-}
-
 router.get("/agents", async (_req, res): Promise<void> => {
   const agents = AGENT_CONFIGS.map((a) => ({
     id: a.id,
@@ -102,7 +154,7 @@ router.post("/agents/query", async (req, res): Promise<void> => {
     const isKeyError = message.includes("GEMINI_API_KEY") || message.includes("API_KEY");
     res.status(500).json({
       error: isKeyError
-        ? "API key is not configured. Add GEMINI_API_KEY (or OPENAI_API_KEY + OPENAI_BASE_URL for open-source) in the Secrets tab."
+        ? "API key is not configured. Add GEMINI_API_KEY in the Secrets tab."
         : message,
     });
   }
@@ -110,6 +162,7 @@ router.post("/agents/query", async (req, res): Promise<void> => {
 
 /**
  * POST /agents/query-file — multipart: file + query
+ * Uses Gemini vision to extract text from PDF/image, then runs finance workflow.
  */
 router.post(
   "/agents/query-file",
@@ -135,46 +188,29 @@ router.post(
     let currency: { code: string; symbol: string; name: string } | undefined;
     try { if (currencyRaw) currency = JSON.parse(currencyRaw); } catch {}
 
+    if (!req.file) {
+      res.status(400).json({ error: "No file attached" });
+      return;
+    }
+
+    const { mimetype, buffer } = req.file;
     const start = Date.now();
 
     try {
-      let attachments: Array<{ mimeType: string; data: string }> | undefined;
+      let extractedText: string;
 
-      if (req.file) {
-        const { mimetype, buffer } = req.file;
-
-        if (mimetype === "application/pdf") {
-          const parsed = await parsePDF(buffer);
-          const textContent = parsed.text.slice(0, 14000);
-          const pdfQuery = `${query}\n\n[Attached PDF — ${parsed.numpages} pages]:\n${textContent}`;
-          const result = await runFinanceWorkflow(pdfQuery, conversationHistory, undefined, userProfile, currency);
-          const elapsed = Date.now() - start;
-          const updatedHistory = [
-            ...conversationHistory,
-            { role: "user", content: query },
-            { role: "assistant", content: result.response },
-          ];
-          res.json({
-            query,
-            agent_name: result.agentName,
-            agent_id: result.agentId,
-            detected_domains: result.detectedDomains,
-            response: result.response,
-            conversation_history: updatedHistory,
-            skills_used: result.skillsUsed,
-            tools_used: result.toolsUsed,
-            actions: result.actions,
-            processing_time_ms: elapsed,
-          });
-          return;
-        }
-
-        if (mimetype.startsWith("image/")) {
-          attachments = [{ mimeType: mimetype, data: buffer.toString("base64") }];
-        }
+      // Use Gemini vision for both PDFs and images
+      if (mimetype === "application/pdf" || mimetype.startsWith("image/")) {
+        logger.info({ mimetype, size: buffer.length }, "Extracting file content with Gemini vision");
+        extractedText = await extractTextWithGemini(buffer, mimetype);
+      } else {
+        // Unsupported type — pass raw text attempt
+        extractedText = buffer.toString("utf-8").slice(0, 14000);
       }
 
-      const result = await runFinanceWorkflow(query, conversationHistory, attachments, userProfile, currency);
+      const enrichedQuery = `${query}\n\n[Extracted content from uploaded file]:\n${extractedText}`;
+
+      const result = await runFinanceWorkflow(enrichedQuery, conversationHistory, undefined, userProfile, currency);
       const elapsed = Date.now() - start;
 
       const updatedHistory = [
@@ -197,7 +233,7 @@ router.post(
       });
     } catch (err) {
       req.log.error({ err }, "Agent file query failed");
-      const message = err instanceof Error ? err.message : "Agent query failed";
+      const message = err instanceof Error ? err.message : "File analysis failed";
       res.status(500).json({ error: message });
     }
   }

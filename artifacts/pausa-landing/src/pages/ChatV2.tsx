@@ -10,29 +10,22 @@ import {
   Bot,
   ChevronRight,
   AlertCircle,
-  Users,
-  ToolCase,
-  TrendingUp,
-  BarChart3,
-  Target,
   CheckCircle2,
   Sparkles,
   Zap,
+  ScanText,
 } from "lucide-react";
 import { useUser as useClerkUser } from "@clerk/clerk-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RichMessage } from "@/components/RichMessage";
 import { useCurrency } from "@/hooks/useCurrency";
 import { useFinancialProfile } from "@/hooks/useFinancialProfile";
-import { AppShell, NavItem } from "@/components/layout/Appshell";
-import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { getProfile, upsertProfile } from "@/lib/community";
 import { isClerkConfigured } from "@/lib/clerk-config";
 import {
   Transaction,
   useFinancialAnalysis,
 } from "@/hooks/useFinancialAnalysis";
-import { useLocation } from "wouter";
 
 const EXAMPLE_PROMPTS = [
   "My monthly salary is ₹60,000 and I spend about ₹35,000",
@@ -40,7 +33,7 @@ const EXAMPLE_PROMPTS = [
   "Show me the SIP calculator",
   "Should I pay off debt or start investing?",
   "Create an emergency fund goal of ₹2 lakhs",
-  "Analyze my spending and open analysis page",
+  "Analyze my spending and show analysis",
 ];
 
 interface AppAction {
@@ -70,46 +63,16 @@ interface AttachedFile {
   preview?: string;
 }
 
-const navItems: NavItem[] = [
-  {
-    id: "overview",
-    label: "Overview",
-    icon: <BarChart3 className="w-4 h-4" />,
-  },
-  {
-    id: "goals",
-    label: "Goals",
-    icon: <Target className="w-4 h-4" />,
-  },
-  {
-    id: "finance",
-    label: "Financial Plan",
-    icon: <TrendingUp className="w-4 h-4" />,
-  },
-  {
-    id: "analysis",
-    label: "Analysis",
-    icon: <BarChart3 className="w-4 h-4" />,
-  },
-  {
-    id: "advisor",
-    label: "AI Advisor",
-    icon: <Bot className="w-4 h-4" />,
-  },
-  {
-    id: "tools",
-    label: "Tools",
-    icon: <ToolCase className="w-4 h-4" />,
-    dividerAbove: true,
-  },
-  {
-    id: "profile",
-    label: "Profile",
-    icon: <Users className="w-4 h-4" />,
-  },
-];
-
-type ViewTab = "all" | "mine" | "liked" | "participated" | "saved" | "stories" | "tools";
+// Maps AI action page names → Dashboard tab IDs
+const PAGE_TO_TAB: Record<string, string> = {
+  tools: "tools",
+  analysis: "analysis",
+  dashboard: "overview",
+  overview: "overview",
+  goals: "goals",
+  community: "community",
+  profile: "profile",
+};
 
 const BASE_URL = import.meta.env.BASE_URL?.replace(/\/$/, "") || "";
 
@@ -122,10 +85,14 @@ async function apiPost(path: string, body: unknown) {
   return res.json();
 }
 
-export function ChatPageV2() {
+interface ChatPageV2Props {
+  /** If provided, AI navigation actions switch tabs via this callback instead of routing */
+  onNavigate?: (tabId: string) => void;
+}
+
+export function ChatPageV2({ onNavigate }: ChatPageV2Props = {}) {
   const clerk = isClerkConfigured ? useClerkUser() : { user: null };
   const user = clerk.user;
-  const [, navigate] = useLocation();
   const [input, setInput] = useState("");
   const { addAnalysis } = useFinancialAnalysis();
   const { updateProfile, profile } = useFinancialProfile();
@@ -133,19 +100,19 @@ export function ChatPageV2() {
   const [currentResponse, setCurrentResponse] = useState<AgentQueryResponse | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
   const [attachedFile, setAttachedFile] = useState<AttachedFile | null>(null);
-  const [executedActions, setExecutedActions] = useState<AppAction[]>([]);
+  const [isFileLoading, setIsFileLoading] = useState(false);
+  const [fileLoadingStage, setFileLoadingStage] = useState<"extracting" | "analyzing">("extracting");
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [activeItem, setActiveItem] = useState<ViewTab>("all");
   const { currency } = useCurrency();
-  const [profiles, setProfile] = useState<ReturnType<typeof getProfile> extends Promise<infer T> ? T : never>(null);
+  const [, setProfile] = useState<ReturnType<typeof getProfile> extends Promise<infer T> ? T : never>(null);
   const queryAgent = useQueryAgent();
   const analyzeQuery = useAnalyzeQuery();
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, queryAgent.isPending]);
+  }, [messages, queryAgent.isPending, isFileLoading]);
 
   useEffect(() => {
     if (user) {
@@ -192,42 +159,35 @@ export function ChatPageV2() {
             if (data.riskTolerance !== undefined) patch.riskTolerance = data.riskTolerance as "low" | "medium" | "high";
             if (data.goals !== undefined) patch.goals = data.goals as string[];
             updateProfile(patch as Parameters<typeof updateProfile>[0]);
-            await apiPost("/api/profile", patch);
+            await apiPost("/api/profile", patch).catch(() => {});
           }
 
           if (action.type === "create_goal") {
-            await apiPost("/api/goals", action.data);
+            await apiPost("/api/goals", action.data).catch(() => {});
           }
 
-          if (action.type === "navigate") {
-            const page = (action.data.page as string) || "";
-            const pageMap: Record<string, string> = {
-              tools: "/tools",
-              analysis: "/analysis",
-              dashboard: "/dashboard",
-              community: "/community",
-              profile: "/profile",
-            };
-            if (pageMap[page]) {
-              setTimeout(() => navigate(pageMap[page]), 600);
+          if (action.type === "navigate" || action.type === "show_analysis") {
+            const page = action.type === "show_analysis"
+              ? "analysis"
+              : String(action.data.page || "");
+            const tabId = PAGE_TO_TAB[page];
+            if (tabId && onNavigate) {
+              setTimeout(() => onNavigate(tabId), 600);
             }
           }
 
-          if (action.type === "show_analysis") {
-            setTimeout(() => navigate("/analysis"), 600);
-          }
-
           if (action.type === "run_calculator") {
-            setTimeout(() => navigate("/tools"), 600);
+            const tabId = PAGE_TO_TAB["tools"];
+            if (tabId && onNavigate) {
+              setTimeout(() => onNavigate(tabId), 600);
+            }
           }
         } catch (err) {
           console.error("Action execution failed:", action.type, err);
         }
       }
-
-      setExecutedActions((prev) => [...prev, ...actions]);
     },
-    [updateProfile, navigate],
+    [updateProfile, onNavigate],
   );
 
   const buildEnrichedQuery = useCallback(
@@ -249,8 +209,6 @@ export function ChatPageV2() {
     },
     [currency, profile],
   );
-
-  const [isFileLoading, setIsFileLoading] = useState(false);
 
   const handleSend = useCallback(
     async (text: string = input) => {
@@ -278,6 +236,7 @@ export function ChatPageV2() {
 
       if (fileToSend) {
         setIsFileLoading(true);
+        setFileLoadingStage("extracting");
         try {
           const formData = new FormData();
           const queryText = trimmed || "Please analyze this file and provide financial insights.";
@@ -287,11 +246,16 @@ export function ChatPageV2() {
           formData.append("user_profile", JSON.stringify(profile));
           formData.append("currency", JSON.stringify(currency));
 
+          // Simulate extraction phase (Gemini processes the file), then switch to analyzing
+          const extractionTimer = setTimeout(() => setFileLoadingStage("analyzing"), 8000);
+
           const start = Date.now();
           const res = await fetch(`${BASE_URL}/api/agents/query-file`, {
             method: "POST",
             body: formData,
           });
+          clearTimeout(extractionTimer);
+
           const data = (await res.json()) as AgentQueryResponse & {
             error?: string;
             actions?: AppAction[];
@@ -304,16 +268,17 @@ export function ChatPageV2() {
           const lastMsg = data.conversation_history[data.conversation_history.length - 1];
           const updatedHistory: ChatMessage[] = [
             ...data.conversation_history.slice(0, -1),
-            { ...lastMsg, actions: data.actions },
+            { ...lastMsg, actions: (data as any).actions },
           ];
           setMessages(updatedHistory);
-          if (data.actions?.length) await executeActions(data.actions);
+          if ((data as any).actions?.length) await executeActions((data as any).actions);
         } catch (err) {
           const msg = err instanceof Error ? err.message : "File analysis failed";
           setApiError(msg);
           setMessages((prev) => prev.slice(0, -1));
         } finally {
           setIsFileLoading(false);
+          setFileLoadingStage("extracting");
         }
         return;
       }
@@ -402,7 +367,7 @@ export function ChatPageV2() {
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-6">
         <div className="max-w-3xl mx-auto space-y-5 pb-4">
-          {messages.length === 0 && !isPending && (
+          {messages.length === 0 && !isPending && !isFileLoading && (
             <div className="flex flex-col items-center justify-center min-h-[55vh] text-center space-y-8">
               <div>
                 <div
@@ -424,7 +389,7 @@ export function ChatPageV2() {
                 </p>
                 <div className="mt-3 flex items-center justify-center gap-2 text-xs text-muted-foreground">
                   <Zap className="w-3 h-3 text-primary" />
-                  <span>I can update your profile, create goals, open tools — all through chat</span>
+                  <span>I can update your profile, create goals, and switch tabs — all through chat</span>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-2 w-full max-w-lg">
@@ -528,7 +493,7 @@ export function ChatPageV2() {
                               {(msg as ChatMessage).attachment!.fileName}
                             </p>
                             <p className="text-[11px] text-muted-foreground mt-0.5">
-                              PDF ·{" "}
+                              {(msg as ChatMessage).attachment!.type === "pdf" ? "PDF" : "Image"} ·{" "}
                               {(((msg as ChatMessage).attachment!.fileSize || 0) / 1024).toFixed(0)} KB
                             </p>
                           </div>
@@ -552,7 +517,46 @@ export function ChatPageV2() {
             );
           })}
 
-          {(isPending || isFileLoading) && (
+          {/* File loading state — with two stages */}
+          {isFileLoading && (
+            <div className="flex justify-start message-in">
+              <div className="ai-card px-6 py-5 w-full">
+                <div className="flex items-center gap-3 mb-3">
+                  {fileLoadingStage === "extracting" ? (
+                    <ScanText className="w-4 h-4 text-primary animate-pulse shrink-0" />
+                  ) : (
+                    <div className="flex gap-1">
+                      {[0, 1, 2].map((n) => (
+                        <div
+                          key={n}
+                          className="pulse-dot w-2 h-2 rounded-full bg-primary"
+                          style={{ animationDelay: `${n * 0.2}s` }}
+                        />
+                      ))}
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-xs font-medium text-foreground">
+                      {fileLoadingStage === "extracting"
+                        ? "Extracting transactions with AI vision..."
+                        : "Analyzing your finances..."}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                      {fileLoadingStage === "extracting"
+                        ? "Gemini is reading every transaction in your document"
+                        : "Running your personalized financial analysis"}
+                    </p>
+                  </div>
+                </div>
+                <Skeleton className="h-3 w-3/4 mb-2" />
+                <Skeleton className="h-3 w-full mb-2" />
+                <Skeleton className="h-3 w-5/6" />
+              </div>
+            </div>
+          )}
+
+          {/* Chat pending state */}
+          {isPending && (
             <div className="flex justify-start message-in">
               <div className="ai-card px-6 py-5 w-full">
                 <div className="flex items-center gap-2 mb-3">
@@ -566,9 +570,7 @@ export function ChatPageV2() {
                     ))}
                   </div>
                   <span className="text-xs text-muted-foreground">
-                    {isFileLoading
-                      ? "Reading your file..."
-                      : analyzeQuery.data
+                    {analyzeQuery.data
                       ? `Working on it with ${analyzeQuery.data.recommended_agent}...`
                       : "Thinking..."}
                   </span>
@@ -650,7 +652,7 @@ export function ChatPageV2() {
             <button
               onClick={() => fileInputRef.current?.click()}
               className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all duration-150 shrink-0 mb-0.5"
-              title="Attach image or PDF"
+              title="Attach bank statement or image"
             >
               <Plus className="w-4.5 h-4.5" />
             </button>
@@ -669,22 +671,22 @@ export function ChatPageV2() {
               }
               className="flex-1 resize-none bg-transparent border-none outline-none text-sm text-foreground placeholder:text-muted-foreground min-h-6 max-h-30 leading-relaxed py-0.5"
               rows={1}
-              disabled={isPending}
+              disabled={isPending || isFileLoading}
               data-testid="input-chat-message"
             />
             <button
               className="p-1.5 rounded-lg shrink-0 mb-0.5 transition-all duration-150 disabled:opacity-40"
               style={{
                 background:
-                  (!input.trim() && !attachedFile) || isPending
+                  (!input.trim() && !attachedFile) || isPending || isFileLoading
                     ? "rgba(255,255,255,0.06)"
                     : "linear-gradient(135deg, #00f5d4, #40e0ff)",
                 color:
-                  (!input.trim() && !attachedFile) || isPending
+                  (!input.trim() && !attachedFile) || isPending || isFileLoading
                     ? "rgba(255,255,255,0.3)"
                     : "#0a0a0a",
               }}
-              disabled={(!input.trim() && !attachedFile) || isPending}
+              disabled={(!input.trim() && !attachedFile) || isPending || isFileLoading}
               onClick={() => handleSend()}
               data-testid="button-send-message"
             >
@@ -694,7 +696,7 @@ export function ChatPageV2() {
 
           <p className="text-center text-[10px] text-muted-foreground mt-1.5">
             <Zap className="w-2.5 h-2.5 inline mr-1 text-primary" />
-            FinAdvisor can update your profile, create goals, and open tools — all from this chat
+            Upload a bank statement PDF — AI extracts every transaction automatically
           </p>
         </div>
       </div>
