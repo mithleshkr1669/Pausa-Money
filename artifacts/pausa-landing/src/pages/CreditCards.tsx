@@ -1,6 +1,15 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { CreditCard, Plus, Search, Trash2, Star, ChevronRight, X, Zap } from "lucide-react";
+import {
+  CreditCard,
+  Plus,
+  Search,
+  Trash2,
+  Star,
+  ChevronRight,
+  X,
+  Zap,
+} from "lucide-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { useUser } from "@clerk/clerk-react";
 
@@ -59,8 +68,13 @@ function CardVisual({ card }: { card: SavedCard }) {
       className="relative rounded-2xl p-4 w-full aspect-[1.6/1] overflow-hidden flex flex-col justify-between"
       style={{ background: `linear-gradient(135deg, ${bg}, ${bg}cc)` }}
     >
-      <div className="absolute inset-0 opacity-10"
-        style={{ backgroundImage: "radial-gradient(circle at 70% 30%, white 0%, transparent 60%)" }} />
+      <div
+        className="absolute inset-0 opacity-10"
+        style={{
+          backgroundImage:
+            "radial-gradient(circle at 70% 30%, white 0%, transparent 60%)",
+        }}
+      />
       <div className="flex justify-between items-start">
         <div className="text-white/80 text-xs font-mono">{card.bank}</div>
         <CreditCard className="w-5 h-5 text-white/50" />
@@ -69,7 +83,9 @@ function CardVisual({ card }: { card: SavedCard }) {
         <div className="text-white/40 text-xs mb-1 font-mono">
           •••• •••• •••• {card.last_four || "****"}
         </div>
-        <div className="text-white text-sm font-bold truncate">{card.card_name}</div>
+        <div className="text-white text-sm font-bold truncate">
+          {card.card_name}
+        </div>
       </div>
     </div>
   );
@@ -82,7 +98,9 @@ function AddCardModal({
   onClose: () => void;
   onAdd: (card: Omit<SavedCard, "id">) => void;
 }) {
-  const [selected, setSelected] = useState<(typeof CARD_PRESETS)[0] | null>(null);
+  const [selected, setSelected] = useState<(typeof CARD_PRESETS)[0] | null>(
+    null,
+  );
   const [lastFour, setLastFour] = useState("");
 
   return (
@@ -118,7 +136,9 @@ function AddCardModal({
 
         {selected && (
           <div className="mb-4">
-            <label className="text-xs text-[#8c8070] block mb-1">Last 4 digits (optional)</label>
+            <label className="text-xs text-[#8c8070] block mb-1">
+              Last 4 digits (optional)
+            </label>
             <input
               type="text"
               maxLength={4}
@@ -144,7 +164,12 @@ function AddCardModal({
             onClose();
           }}
           className="w-full py-3 rounded-xl font-bold text-sm disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-          style={{ background: selected ? "linear-gradient(135deg, #00E5D4, #00F5A0)" : undefined, color: selected ? "#09090f" : undefined }}
+          style={{
+            background: selected
+              ? "linear-gradient(135deg, #00E5D4, #00F5A0)"
+              : undefined,
+            color: selected ? "#09090f" : undefined,
+          }}
         >
           {selected ? `Add ${selected.card_name}` : "Select a card above"}
         </button>
@@ -160,7 +185,10 @@ export default function CreditCardsPage() {
   const [cards, setCards] = useState<SavedCard[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [merchant, setMerchant] = useState("");
-  const [rewards, setRewards] = useState<{ merchant: string; cards: RewardCard[] } | null>(null);
+  const [rewards, setRewards] = useState<{
+    merchant: string;
+    cards: RewardCard[];
+  } | null>(null);
   const [loadingRewards, setLoadingRewards] = useState(false);
 
   // Load cards from Supabase or localStorage
@@ -172,12 +200,19 @@ export default function CreditCardsPage() {
           .select("*")
           .eq("user_id", userId)
           .order("added_at", { ascending: false });
-        if (data) { setCards(data as SavedCard[]); return; }
+        if (data) {
+          setCards(data as SavedCard[]);
+          return;
+        }
       }
       try {
-        const ls = JSON.parse(localStorage.getItem("pausa_credit_cards") ?? "[]");
+        const ls = JSON.parse(
+          localStorage.getItem("pausa_credit_cards") ?? "[]",
+        );
         setCards(ls);
-      } catch { /* empty */ }
+      } catch {
+        /* empty */
+      }
     }
     load();
   }, [userId]);
@@ -215,11 +250,13 @@ export default function CreditCardsPage() {
     try {
       const userCardsParam = cards.map((c) => c.card_name).join(",");
       const res = await fetch(
-        `${API}/v1/rewards?merchant=${encodeURIComponent(merchant)}&userCards=${encodeURIComponent(userCardsParam)}`
+        `${API}/v1/rewards?merchant=${encodeURIComponent(merchant)}&userCards=${encodeURIComponent(userCardsParam)}`,
       );
       const data = await res.json();
       setRewards(data);
-    } catch { /* empty */ }
+    } catch {
+      /* empty */
+    }
     setLoadingRewards(false);
   }
 
@@ -228,13 +265,20 @@ export default function CreditCardsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-display font-bold text-[#f0e8d8]">Credit Card Optimizer</h2>
-          <p className="text-sm text-muted-foreground mt-0.5">Find the best card for every purchase</p>
+          <h2 className="text-xl font-display font-bold text-[#f0e8d8]">
+            Credit Card Optimizer
+          </h2>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Find the best card for every purchase
+          </p>
         </div>
         <button
           onClick={() => setShowAddModal(true)}
           className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all hover:opacity-90"
-          style={{ background: "linear-gradient(135deg, #00E5D4, #00F5A0)", color: "#09090f" }}
+          style={{
+            background: "linear-gradient(135deg, #00E5D4, #00F5A0)",
+            color: "#09090f",
+          }}
         >
           <Plus className="w-4 h-4" /> Add Card
         </button>
@@ -245,11 +289,16 @@ export default function CreditCardsPage() {
         <div className="rounded-2xl border border-dashed border-white/15 p-8 text-center">
           <CreditCard className="w-10 h-10 text-[#8c8070] mx-auto mb-3" />
           <p className="text-[#f0e8d8] font-medium mb-1">No cards added yet</p>
-          <p className="text-sm text-[#8c8070] mb-4">Add your credit cards to get personalised cashback recommendations</p>
+          <p className="text-sm text-[#8c8070] mb-4">
+            Add your credit cards to get personalised cashback recommendations
+          </p>
           <button
             onClick={() => setShowAddModal(true)}
             className="px-5 py-2 rounded-xl text-sm font-bold"
-            style={{ background: "linear-gradient(135deg, #00E5D4, #00F5A0)", color: "#09090f" }}
+            style={{
+              background: "linear-gradient(135deg, #00E5D4, #00F5A0)",
+              color: "#09090f",
+            }}
           >
             Add your first card
           </button>
@@ -285,15 +334,26 @@ export default function CreditCardsPage() {
           <h3 className="font-semibold text-[#f0e8d8]">Best Card Finder</h3>
         </div>
         <p className="text-sm text-[#8c8070] mb-4">
-          Type a merchant or app name to see which card gives you the most cashback.
+          Type a merchant or app name to see which card gives you the most
+          cashback.
         </p>
 
         {/* Quick suggestions */}
         <div className="flex flex-wrap gap-2 mb-4">
-          {["Amazon", "Swiggy", "Zomato", "IRCTC", "Flipkart", "Uber", "BigBasket"].map((m) => (
+          {[
+            "Amazon",
+            "Swiggy",
+            "Zomato",
+            "IRCTC",
+            "Flipkart",
+            "Uber",
+            "BigBasket",
+          ].map((m) => (
             <button
               key={m}
-              onClick={() => { setMerchant(m); }}
+              onClick={() => {
+                setMerchant(m);
+              }}
               className="px-3 py-1 rounded-full text-xs border border-white/10 text-[#8c8070] hover:border-[#00E5D4]/30 hover:text-[#00E5D4] transition-colors"
             >
               {m}
@@ -314,7 +374,10 @@ export default function CreditCardsPage() {
             onClick={handleLookup}
             disabled={loadingRewards}
             className="px-4 py-2.5 rounded-xl font-bold text-sm disabled:opacity-50 transition-all"
-            style={{ background: "linear-gradient(135deg, #00E5D4, #00F5A0)", color: "#09090f" }}
+            style={{
+              background: "linear-gradient(135deg, #00E5D4, #00F5A0)",
+              color: "#09090f",
+            }}
           >
             {loadingRewards ? (
               <div className="w-4 h-4 border-2 border-[#09090f]/30 border-t-[#09090f] rounded-full animate-spin" />
@@ -344,32 +407,49 @@ export default function CreditCardsPage() {
                       : "border-white/8 bg-white/2"
                   }`}
                 >
-                  <div className="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold text-white"
-                    style={{ background: BANK_LOGO_COLORS[card.bank] ?? "#333" }}>
+                  <div
+                    className="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold text-white"
+                    style={{
+                      background: BANK_LOGO_COLORS[card.bank] ?? "#333",
+                    }}
+                  >
                     {card.bank.slice(0, 2)}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
-                      <span className="text-sm font-medium text-[#f0e8d8] truncate">{card.cardName}</span>
+                      <span className="text-sm font-medium text-[#f0e8d8] truncate">
+                        {card.cardName}
+                      </span>
                       {card.owned && (
                         <span className="text-[#00E5D4] text-xs flex items-center gap-0.5 shrink-0">
                           <Star className="w-3 h-3 fill-current" /> Yours
                         </span>
                       )}
-                      {i === 0 && <span className="text-xs bg-[#00E5D4]/15 text-[#00E5D4] px-1.5 py-0.5 rounded font-mono shrink-0">Best</span>}
+                      {i === 0 && (
+                        <span className="text-xs bg-[#00E5D4]/15 text-[#00E5D4] px-1.5 py-0.5 rounded font-mono shrink-0">
+                          Best
+                        </span>
+                      )}
                     </div>
-                    <p className="text-xs text-[#8c8070] truncate">{card.notes}</p>
+                    <p className="text-xs text-[#8c8070] truncate">
+                      {card.notes}
+                    </p>
                   </div>
                   <div className="text-right shrink-0">
-                    <div className="text-[#00E5D4] font-bold text-sm">{card.cashbackPercent}%</div>
+                    <div className="text-[#00E5D4] font-bold text-sm">
+                      {card.cashbackPercent}%
+                    </div>
                     {card.monthlyLimit && (
-                      <div className="text-xs text-[#8c8070]">cap ₹{(card.monthlyLimit / 1000).toFixed(0)}K</div>
+                      <div className="text-xs text-[#8c8070]">
+                        cap ₹{(card.monthlyLimit / 1000).toFixed(0)}K
+                      </div>
                     )}
                   </div>
                 </div>
               ))}
               <p className="text-xs text-[#8c8070]/60 mt-3 italic">
-                Rates are approximate and educational only. Verify current rates with your bank.
+                Rates are approximate and educational only. Verify current rates
+                with your bank.
               </p>
             </motion.div>
           )}
@@ -377,7 +457,7 @@ export default function CreditCardsPage() {
       </div>
 
       {/* Cron sync info */}
-      <div className="bg-[#13131e] border border-white/8 rounded-2xl p-5">
+      {/* <div className="bg-[#13131e] border border-white/8 rounded-2xl p-5">
         <div className="flex items-start gap-3">
           <div className="w-8 h-8 rounded-lg bg-[#00E5D4]/10 flex items-center justify-center shrink-0 mt-0.5">
             <ChevronRight className="w-4 h-4 text-[#00E5D4]" />
@@ -391,7 +471,7 @@ export default function CreditCardsPage() {
             </p>
           </div>
         </div>
-      </div>
+      </div> */}
 
       {showAddModal && (
         <AddCardModal

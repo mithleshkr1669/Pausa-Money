@@ -666,11 +666,11 @@ function DashboardInner() {
       icon: <Target className="w-4 h-4" />,
       badge: activeGoals.length,
     },
-    {
-      id: "finance",
-      label: "Financial Plan",
-      icon: <TrendingUp className="w-4 h-4" />,
-    },
+    // {
+    //   id: "finance",
+    //   label: "Financial Plan",
+    //   icon: <TrendingUp className="w-4 h-4" />,
+    // },
     {
       id: "ring",
       label: "My Ring",
@@ -687,7 +687,7 @@ function DashboardInner() {
     },
     {
       id: "ai advisor",
-      label: "AI Advisor",
+      label: "Pausa AI",
       icon: <Bot className="w-4 h-4" />,
     },
     // {
@@ -708,11 +708,11 @@ function DashboardInner() {
       label: "Cards",
       icon: <CreditCard className="w-4 h-4" />,
     },
-    {
-      id: "wealth",
-      label: "Grow Wealth",
-      icon: <TrendingUp className="w-4 h-4" />,
-    },
+    // {
+    //   id: "wealth",
+    //   label: "Grow Wealth",
+    //   icon: <TrendingUp className="w-4 h-4" />,
+    // },
     {
       id: "tools",
       label: "Tools",
@@ -836,9 +836,12 @@ function DashboardInner() {
           {activeItem === "wealth" && (
             <div className="p-6 max-w-4xl mx-auto">
               <div className="mb-6">
-                <h2 className="text-xl font-display font-bold mb-1">Grow Your Wealth</h2>
+                <h2 className="text-xl font-display font-bold mb-1">
+                  Grow Your Wealth
+                </h2>
                 <p className="text-sm text-muted-foreground">
-                  Curated mutual fund recommendations with live AMFI NAV data. Start a SIP with as little as ₹100/month.
+                  Curated mutual fund recommendations with live AMFI NAV data.
+                  Start a SIP with as little as ₹100/month.
                 </p>
               </div>
               <WealthSuggestions />

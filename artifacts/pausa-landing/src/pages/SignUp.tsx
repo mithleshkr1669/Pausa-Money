@@ -2,6 +2,7 @@ import { Link } from "wouter";
 import { isClerkConfigured } from "@/lib/clerk-config";
 import { KeyRound } from "lucide-react";
 import { SignUp } from "@clerk/clerk-react";
+import { PausaLogo } from "@/components/PausaLogo";
 function ClerkSignUp() {
   return (
     <SignUp
@@ -45,11 +46,13 @@ export default function SignUpPage() {
       <div className="relative z-10 w-full flex flex-col items-center">
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2 mb-6">
-            <img
+            {/* <img
               src="/image.png"
               alt="Pausa"
               className="h-10 w-10 rounded-lg"
-            />
+            /> */}
+            <PausaLogo size={36} />
+
             <span className="font-display font-bold text-2xl text-foreground">
               Pausa
             </span>

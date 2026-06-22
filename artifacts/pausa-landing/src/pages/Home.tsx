@@ -100,7 +100,7 @@ function HomeNav({
         </div> */}
 
         <div className="hidden md:flex items-center gap-3">
-          <button
+          {/* <button
             onClick={scrollToDownload}
             className="text-sm font-semibold px-3 py-1.5 rounded-full border border-[#00E5D4]/25 text-[#00E5D4] hover:bg-[#00E5D4]/8 transition-colors flex items-center gap-1.5"
           >
@@ -118,7 +118,7 @@ function HomeNav({
               />
             </svg>
             APK
-          </button>
+          </button> */}
           {/* <button
             onClick={() => setLang(lang === "en" ? "hi" : "en")}
             className="text-xs font-mono px-3 py-1.5 rounded-full border border-white/12 text-[#8c8070] hover:border-[#00E5D4]/30 hover:text-[#00E5D4] transition-colors"
@@ -269,9 +269,28 @@ function HeroDashboardPreview() {
   const insight = insights[tick % insights.length];
 
   const cardRewards = [
-    { name: "HDFC Millennia", bank: "HDFC", cashback: "10%", tag: "Best", color: "#0d1b4b", owned: true },
-    { name: "Swiggy HDFC", bank: "HDFC", cashback: "10%", tag: "Cap ₹1.5K", color: "#fc5200" },
-    { name: "AmEx Gold", bank: "AmEx", cashback: "5×", tag: "Dining", color: "#c5a028" },
+    {
+      name: "HDFC Millennia",
+      bank: "HDFC",
+      cashback: "10%",
+      tag: "Best",
+      color: "#0d1b4b",
+      owned: true,
+    },
+    {
+      name: "Swiggy HDFC",
+      bank: "HDFC",
+      cashback: "10%",
+      tag: "Cap ₹1.5K",
+      color: "#fc5200",
+    },
+    {
+      name: "AmEx Gold",
+      bank: "AmEx",
+      cashback: "5×",
+      tag: "Dining",
+      color: "#c5a028",
+    },
   ];
 
   const monthBars = [
@@ -282,8 +301,12 @@ function HeroDashboardPreview() {
   return (
     <div className="relative w-full">
       {/* Ambient glow */}
-      <div className="absolute -inset-8 rounded-3xl blur-3xl opacity-20 pointer-events-none"
-        style={{ background: `radial-gradient(ellipse at 60% 40%, ${CY}, #6c5ce7 50%, transparent 80%)` }} />
+      <div
+        className="absolute -inset-8 rounded-3xl blur-3xl opacity-20 pointer-events-none"
+        style={{
+          background: `radial-gradient(ellipse at 60% 40%, ${CY}, #6c5ce7 50%, transparent 80%)`,
+        }}
+      />
 
       <div className="relative space-y-3">
         {/* Top row — two panels side by side */}
@@ -298,22 +321,35 @@ function HeroDashboardPreview() {
           >
             <div className="flex items-center gap-1.5 mb-3">
               <span className="w-1.5 h-1.5 rounded-full bg-[#00E5D4] animate-pulse" />
-              <span className="text-[10px] font-mono text-[#00E5D4] uppercase tracking-widest">Card Optimizer</span>
+              <span className="text-[10px] font-mono text-[#00E5D4] uppercase tracking-widest">
+                Card Optimizer
+              </span>
             </div>
-            <p className="text-[10px] text-[#8c8070] mb-2">Best card for Swiggy</p>
+            <p className="text-[10px] text-[#8c8070] mb-2">
+              Best card for Swiggy
+            </p>
             <div className="space-y-1.5">
               {cardRewards.map((c, i) => (
-                <div key={c.name} className={`flex items-center gap-2 p-1.5 rounded-lg ${i === 0 ? "border border-[#00E5D4]/20" : ""}`}
-                  style={i === 0 ? { background: `${CY}08` } : undefined}>
-                  <div className="w-5 h-5 rounded flex items-center justify-center text-[8px] font-black text-white shrink-0"
-                    style={{ background: c.color }}>
+                <div
+                  key={c.name}
+                  className={`flex items-center gap-2 p-1.5 rounded-lg ${i === 0 ? "border border-[#00E5D4]/20" : ""}`}
+                  style={i === 0 ? { background: `${CY}08` } : undefined}
+                >
+                  <div
+                    className="w-5 h-5 rounded flex items-center justify-center text-[8px] font-black text-white shrink-0"
+                    style={{ background: c.color }}
+                  >
                     {c.bank.slice(0, 2)}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[10px] font-medium text-[#f0e8d8] truncate">{c.name}</p>
+                    <p className="text-[10px] font-medium text-[#f0e8d8] truncate">
+                      {c.name}
+                    </p>
                   </div>
                   <div className="text-right">
-                    <span className="text-[#00E5D4] text-[10px] font-bold">{c.cashback}</span>
+                    <span className="text-[#00E5D4] text-[10px] font-bold">
+                      {c.cashback}
+                    </span>
                   </div>
                 </div>
               ))}
@@ -330,24 +366,51 @@ function HeroDashboardPreview() {
           >
             <div className="flex items-center gap-1.5 mb-3">
               <span className="w-1.5 h-1.5 rounded-full bg-[#a78bfa] animate-pulse" />
-              <span className="text-[10px] font-mono text-[#a78bfa] uppercase tracking-widest">Insurance Score</span>
+              <span className="text-[10px] font-mono text-[#a78bfa] uppercase tracking-widest">
+                Insurance Score
+              </span>
             </div>
             <div className="flex-1 flex flex-col items-center justify-center">
               {/* Mini donut */}
               <div className="relative w-16 h-16 mb-2">
-                <svg className="absolute inset-0 -rotate-90" width="64" height="64" viewBox="0 0 64 64">
-                  <circle cx="32" cy="32" r="24" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="5" />
-                  <circle cx="32" cy="32" r="24" fill="none" stroke="#e07050" strokeWidth="5"
+                <svg
+                  className="absolute inset-0 -rotate-90"
+                  width="64"
+                  height="64"
+                  viewBox="0 0 64 64"
+                >
+                  <circle
+                    cx="32"
+                    cy="32"
+                    r="24"
+                    fill="none"
+                    stroke="rgba(255,255,255,0.06)"
+                    strokeWidth="5"
+                  />
+                  <circle
+                    cx="32"
+                    cy="32"
+                    r="24"
+                    fill="none"
+                    stroke="#e07050"
+                    strokeWidth="5"
                     strokeDasharray={`${(58 / 100) * (2 * Math.PI * 24)} ${2 * Math.PI * 24}`}
-                    strokeLinecap="round" />
+                    strokeLinecap="round"
+                  />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
                   <span className="text-sm font-black text-[#e07050]">58</span>
-                  <span className="text-[8px] text-[#8c8070] font-mono">/100</span>
+                  <span className="text-[8px] text-[#8c8070] font-mono">
+                    /100
+                  </span>
                 </div>
               </div>
-              <p className="text-[10px] font-semibold text-[#e07050]">At Risk</p>
-              <p className="text-[9px] text-[#8c8070] text-center mt-0.5">Term cover gap: ₹60L</p>
+              <p className="text-[10px] font-semibold text-[#e07050]">
+                At Risk
+              </p>
+              <p className="text-[9px] text-[#8c8070] text-center mt-0.5">
+                Term cover gap: ₹60L
+              </p>
             </div>
           </motion.div>
         </div>
@@ -363,37 +426,66 @@ function HeroDashboardPreview() {
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-[10px] font-mono text-emerald-400 uppercase tracking-widest">Statement Analysis</span>
+              <span className="text-[10px] font-mono text-emerald-400 uppercase tracking-widest">
+                Statement Analysis
+              </span>
             </div>
-            <span className="text-[9px] text-[#00E5D4] bg-[#00E5D4]/10 px-2 py-0.5 rounded-full font-mono">+₹4,000 saved</span>
+            <span className="text-[9px] text-[#00E5D4] bg-[#00E5D4]/10 px-2 py-0.5 rounded-full font-mono">
+              +₹4,000 saved
+            </span>
           </div>
           <div className="flex items-end gap-3">
             {monthBars.map((m) => (
               <div key={m.label} className="flex-1">
-                <p className="text-[9px] text-[#8c8070] mb-1.5 text-center">{m.label}</p>
+                <p className="text-[9px] text-[#8c8070] mb-1.5 text-center">
+                  {m.label}
+                </p>
                 <div className="space-y-1">
                   {/* Income bar */}
                   <div className="flex items-center gap-1.5">
                     <div className="w-8 text-[8px] text-[#8c8070]">Inc</div>
                     <div className="flex-1 h-2.5 rounded-full bg-white/5 overflow-hidden">
-                      <motion.div className="h-full rounded-full" style={{ background: CY, width: `${(m.income / 70000) * 100}%` }}
-                        initial={{ width: 0 }} animate={{ width: `${(m.income / 70000) * 100}%` }} transition={{ duration: 0.8, delay: 0.3 }} />
+                      <motion.div
+                        className="h-full rounded-full"
+                        style={{
+                          background: CY,
+                          width: `${(m.income / 70000) * 100}%`,
+                        }}
+                        initial={{ width: 0 }}
+                        animate={{ width: `${(m.income / 70000) * 100}%` }}
+                        transition={{ duration: 0.8, delay: 0.3 }}
+                      />
                     </div>
-                    <div className="w-8 text-[8px] text-[#f0e8d8] text-right">{(m.income / 1000).toFixed(0)}K</div>
+                    <div className="w-8 text-[8px] text-[#f0e8d8] text-right">
+                      {(m.income / 1000).toFixed(0)}K
+                    </div>
                   </div>
                   {/* Expense bar */}
                   <div className="flex items-center gap-1.5">
                     <div className="w-8 text-[8px] text-[#8c8070]">Exp</div>
                     <div className="flex-1 h-2.5 rounded-full bg-white/5 overflow-hidden">
-                      <motion.div className="h-full rounded-full" style={{ background: "#e07050", width: `${(m.expense / 70000) * 100}%` }}
-                        initial={{ width: 0 }} animate={{ width: `${(m.expense / 70000) * 100}%` }} transition={{ duration: 0.8, delay: 0.4 }} />
+                      <motion.div
+                        className="h-full rounded-full"
+                        style={{
+                          background: "#e07050",
+                          width: `${(m.expense / 70000) * 100}%`,
+                        }}
+                        initial={{ width: 0 }}
+                        animate={{ width: `${(m.expense / 70000) * 100}%` }}
+                        transition={{ duration: 0.8, delay: 0.4 }}
+                      />
                     </div>
-                    <div className="w-8 text-[8px] text-[#f0e8d8] text-right">{(m.expense / 1000).toFixed(0)}K</div>
+                    <div className="w-8 text-[8px] text-[#f0e8d8] text-right">
+                      {(m.expense / 1000).toFixed(0)}K
+                    </div>
                   </div>
                 </div>
               </div>
             ))}
-            <div className="flex-1 border border-[#00E5D4]/15 rounded-xl p-2 text-center" style={{ background: `${CY}05` }}>
+            <div
+              className="flex-1 border border-[#00E5D4]/15 rounded-xl p-2 text-center"
+              style={{ background: `${CY}05` }}
+            >
               <p className="text-[9px] text-[#8c8070] mb-0.5">Savings↑</p>
               <p className="text-sm font-black text-[#00E5D4]">+8%</p>
               <p className="text-[8px] text-[#8c8070]">vs May</p>
@@ -409,10 +501,22 @@ function HeroDashboardPreview() {
           className="rounded-2xl px-4 py-3 border border-white/8 flex items-center gap-3"
           style={{ background: "rgba(13,13,22,0.92)" }}
         >
-          <div className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0"
-            style={{ background: `linear-gradient(135deg, ${CY}, ${CYG})` }}>
-            <svg className="w-3.5 h-3.5 text-[#09090f]" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.091z" />
+          <div
+            className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0"
+            style={{ background: `linear-gradient(135deg, ${CY}, ${CYG})` }}
+          >
+            <svg
+              className="w-3.5 h-3.5 text-[#09090f]"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2.5}
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.091z"
+              />
             </svg>
           </div>
           <AnimatePresence mode="wait">
@@ -427,7 +531,9 @@ function HeroDashboardPreview() {
               {insight}
             </motion.p>
           </AnimatePresence>
-          <span className="text-[10px] font-mono text-[#00E5D4]/50 shrink-0">Pausa AI</span>
+          <span className="text-[10px] font-mono text-[#00E5D4]/50 shrink-0">
+            Pausa AI
+          </span>
         </motion.div>
       </div>
     </div>
@@ -448,7 +554,7 @@ function Hero() {
             <div className="inline-flex items-center gap-2 bg-[#00E5D4]/8 border border-[#00E5D4]/20 rounded-full px-3 py-1.5 mb-6">
               <span className="w-1.5 h-1.5 rounded-full bg-[#00E5D4] animate-pulse" />
               <span className="text-xs font-mono text-[#00E5D4] uppercase tracking-widest">
-                AI · Cards · Loans · Insurance
+                AI · Cards · Loans · Insurance · Community
               </span>
             </div>
             <h1 className="font-lora text-4xl sm:text-5xl lg:text-6xl font-bold text-[#f0e8d8] leading-[1.1] mb-6">
@@ -466,9 +572,9 @@ function Hero() {
               </span>
             </h1>
             <p className="text-base sm:text-lg text-[#8c8070] font-jakarta leading-relaxed mb-8 max-w-md">
-              Upload your bank statement. Compare months. Optimize credit card cashback.
-              Evaluate microloans. Calculate insurance cover.
-              All free. All India-first.
+              Upload your bank statement. Compare months. Optimize credit card
+              cashback. Evaluate microloans. Calculate insurance cover. All
+              free. All India-first.
             </p>
 
             {/* Feature chips */}
@@ -482,9 +588,16 @@ function Hero() {
                 <div
                   key={f.label}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium"
-                  style={{ borderColor: `${f.color}30`, color: f.color, background: `${f.color}08` }}
+                  style={{
+                    borderColor: `${f.color}30`,
+                    color: f.color,
+                    background: `${f.color}08`,
+                  }}
                 >
-                  <span className="w-1 h-1 rounded-full" style={{ background: f.color }} />
+                  <span
+                    className="w-1 h-1 rounded-full"
+                    style={{ background: f.color }}
+                  />
                   {f.label}
                 </div>
               ))}
@@ -502,18 +615,29 @@ function Hero() {
                   Start free →
                 </button>
               </Link>
-              <button
+              {/* <button
                 onClick={scrollToDownload}
                 className="w-full sm:w-auto flex items-center justify-center gap-2 font-semibold px-8 py-3.5 rounded-full border border-[#00E5D4]/25 text-[#00E5D4] hover:bg-[#00E5D4]/8 transition-all text-base"
               >
-                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                <svg
+                  className="w-4 h-4"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                  />
                 </svg>
                 Android APK
-              </button>
+              </button> */}
             </div>
             <p className="text-xs text-[#8c8070] font-jakarta">
-              Free forever. Not a SEBI-registered advisor. Educational guidance only.
+              Free forever. Not a SEBI-registered advisor. Educational guidance
+              only.
             </p>
           </motion.div>
         </div>
@@ -1297,20 +1421,22 @@ function Footer() {
       <div className="max-w-6xl mx-auto">
         <div className="flex flex-col md:flex-row items-center justify-between gap-4">
           {/* Left - Logo + Brand */}
-          <div className="flex items-center gap-0">
+          <div className="flex items-center gap-3">
             {/* Reduced gap */}
-            <img
+            {/* <img
               src="/image.png"
               alt="Pausa"
               className="w-30 h-40 object-contain" // Increased size (you can go w-11 or w-12)
-            />
+            /> */}
+            <PausaLogo size={36} />
+
             <span className="font-lora font-bold text-2xl text-[#f0e8d8]">
               Pausa
             </span>
           </div>
 
           {/* Center - Navigation Links */}
-          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-[#8c8070] font-jakarta">
+          {/* <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-[#8c8070] font-jakarta">
             <Link href="/community">
               <span className="hover:text-[#00E5D4] transition-colors cursor-pointer">
                 Community
@@ -1326,7 +1452,7 @@ function Footer() {
                 AI Advisor
               </span>
             </Link>
-          </div>
+          </div> */}
 
           {/* Right - Disclaimer */}
           <div className="text-xs text-[#8c8070] font-jakarta text-center md:text-right max-w-[280px]">
@@ -1353,7 +1479,7 @@ export default function Home() {
       <OriginStory />
       <HowItWorks />
       <FinalCTA />
-      <AndroidDownload />
+      {/* <AndroidDownload /> */}
       <Footer />
     </div>
   );

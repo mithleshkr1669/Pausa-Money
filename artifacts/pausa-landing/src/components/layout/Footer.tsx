@@ -1,3 +1,5 @@
+import { PausaLogo } from "../PausaLogo";
+
 export function Footer() {
   return (
     <footer className="bg-background border-t border-white/5 pt-16 pb-8 relative overflow-hidden">
@@ -7,11 +9,13 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
           <div className="md:col-span-2">
             <div className="flex items-center gap-3 mb-6">
-              <img
+              {/* <img
                 src="/image.png"
                 alt="Pausa logo"
                 className="h-9 w-9 object-contain rounded-lg"
-              />
+              /> */}
+              <PausaLogo size={36} />
+
               <span className="font-display font-bold text-xl tracking-tight text-foreground">
                 Pausa
               </span>

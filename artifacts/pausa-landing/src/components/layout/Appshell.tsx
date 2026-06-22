@@ -4,6 +4,7 @@ import { Menu, Users, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { RING_CONFIG, type RingTier } from "@/lib/community";
 import type { Profile } from "@/lib/community";
+import { PausaLogo } from "../PausaLogo";
 
 export interface NavItem {
   id: string;
@@ -45,11 +46,12 @@ export function AppShell({
       <div className="px-4 py-4 border-b border-white/5 shrink-0">
         <Link href="/" onClick={onClose}>
           <div className="flex items-center gap-2.5 cursor-pointer">
-            <img
+            {/* <img
               src="/image.png"
               alt="Pausa logo"
               className="h-8 w-8 md:h-10 md:w-10 object-contain rounded-lg"
-            />
+            /> */}
+            <PausaLogo size={36} />
 
             <span className="font-display font-bold text-lg tracking-tight">
               Pausa

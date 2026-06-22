@@ -129,7 +129,7 @@ export function ChatPage() {
           formData.append("currency", JSON.stringify(currency));
 
           const start = Date.now();
-          const res = await fetch("/api/agents/query-file", {
+          const res = await fetch("/agents/query-file", {
             method: "POST",
             body: formData,
           });

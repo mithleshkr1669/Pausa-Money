@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { isClerkConfigured } from "@/lib/clerk-config";
 import { useClerk, useUser } from "@clerk/clerk-react";
+import { PausaLogo } from "../PausaLogo";
 function UserMenuClerk({ onNavClick }: { onNavClick?: () => void }) {
   const { isSignedIn, user, isLoaded } = useUser();
   const { signOut } = useClerk();
@@ -84,7 +85,7 @@ function UserMenuClerk({ onNavClick }: { onNavClick?: () => void }) {
                 onClick={close}
               >
                 <Bot className="w-4 h-4 text-muted-foreground" />
-                AI Advisor
+                Pausa AI
               </button>
             </Link>
             <Link href="/community">
@@ -170,7 +171,7 @@ export function Navbar() {
     },
     {
       href: "/advisor",
-      label: "AI Advisor",
+      label: "Pausa AI",
       icon: <Bot className="w-4 h-4" />,
       active: location === "/advisor",
     },
@@ -191,11 +192,13 @@ export function Navbar() {
           href="/"
           className="flex items-center gap-2.5 outline-none shrink-0"
         >
-          <img
+          {/* <img
             src="/image.png"
             alt="Pausa logo"
             className="h-8 w-8 md:h-10 md:w-10 object-contain rounded-lg"
-          />
+          /> */}
+          <PausaLogo size={36} />
+
           <span className="font-display font-bold text-xl md:text-2xl tracking-tight text-foreground">
             Pausa
           </span>

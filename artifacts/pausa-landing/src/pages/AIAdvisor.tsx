@@ -901,7 +901,7 @@ function AIAdvisorInner() {
       activeItem={activeItem}
       onNavSelect={setActiveItem}
       profile={profile}
-      sectionTitle="AI Advisor"
+      sectionTitle="Pausa AI"
     >
       <div className="h-full flex flex-col">
         <AnimatePresence mode="wait">

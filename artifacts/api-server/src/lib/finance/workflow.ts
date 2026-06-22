@@ -58,7 +58,7 @@ export function getLLMConfig(): LLMConfig {
   }
   return {
     provider: "gemini",
-    model: process.env.LLM_MODEL || "gemini-2.0-flash",
+    model: process.env.LLM_MODEL || "gemini-2.5-flash",
   };
 }
 
@@ -77,7 +77,7 @@ function getGenAI(): GoogleGenerativeAI {
   return _genAI;
 }
 
-const GEMINI_MODELS = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-flash-8b"];
+const GEMINI_MODELS = ["gemini-2.5-flash", "gemini-2.5-flash", "gemini-1.5-flash-8b"];
 
 async function callGemini(
   systemPrompt: string,

@@ -112,24 +112,34 @@ interface ChatPageV2Props {
   onGoalCreated?: (goal: SavingsGoal) => void;
 }
 
-export function ChatPageV2({ onNavigate, userId, onGoalCreated }: ChatPageV2Props = {}) {
+export function ChatPageV2({
+  onNavigate,
+  userId,
+  onGoalCreated,
+}: ChatPageV2Props = {}) {
   const clerk = isClerkConfigured ? useClerkUser() : { user: null };
   const user = clerk.user;
   const [input, setInput] = useState("");
   const { addAnalysis, getSummaryForAI } = useFinancialAnalysis();
   const { updateProfile, profile } = useFinancialProfile();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [currentResponse, setCurrentResponse] = useState<AgentQueryResponse | null>(null);
+  const [currentResponse, setCurrentResponse] =
+    useState<AgentQueryResponse | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
   const [attachedFile, setAttachedFile] = useState<AttachedFile | null>(null);
   const [isFileLoading, setIsFileLoading] = useState(false);
-  const [fileLoadingStage, setFileLoadingStage] = useState<"extracting" | "parsing" | "categorizing" | "analyzing">("extracting");
+  const [fileLoadingStage, setFileLoadingStage] = useState<
+    "extracting" | "parsing" | "categorizing" | "analyzing"
+  >("extracting");
   const [txCountHint, setTxCountHint] = useState<number | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { currency } = useCurrency();
-  const [, setProfile] = useState<ReturnType<typeof getProfile> extends Promise<infer T> ? T : never>(null);
+  const [, setProfile] =
+    useState<
+      ReturnType<typeof getProfile> extends Promise<infer T> ? T : never
+    >(null);
   const queryAgent = useQueryAgent();
   const analyzeQuery = useAnalyzeQuery();
 
@@ -176,10 +186,17 @@ export function ChatPageV2({ onNavigate, userId, onGoalCreated }: ChatPageV2Prop
             const patch: Record<string, unknown> = {};
             if (data.name !== undefined) patch.name = String(data.name);
             if (data.age !== undefined) patch.age = Number(data.age);
-            if (data.occupation !== undefined) patch.occupation = String(data.occupation);
-            if (data.monthlyIncome !== undefined) patch.monthlyIncome = Number(data.monthlyIncome);
-            if (data.monthlyExpenses !== undefined) patch.monthlyExpenses = Number(data.monthlyExpenses);
-            if (data.riskTolerance !== undefined) patch.riskTolerance = data.riskTolerance as "low" | "medium" | "high";
+            if (data.occupation !== undefined)
+              patch.occupation = String(data.occupation);
+            if (data.monthlyIncome !== undefined)
+              patch.monthlyIncome = Number(data.monthlyIncome);
+            if (data.monthlyExpenses !== undefined)
+              patch.monthlyExpenses = Number(data.monthlyExpenses);
+            if (data.riskTolerance !== undefined)
+              patch.riskTolerance = data.riskTolerance as
+                | "low"
+                | "medium"
+                | "high";
             if (data.goals !== undefined) patch.goals = data.goals as string[];
             updateProfile(patch as Parameters<typeof updateProfile>[0]);
             await apiPost("/api/profile", patch).catch(() => {});
@@ -195,15 +212,19 @@ export function ChatPageV2({ onNavigate, userId, onGoalCreated }: ChatPageV2Prop
             };
             if (userId) {
               const category =
-                AI_GOAL_CATEGORY_MAP[d.category?.toLowerCase() ?? ""] ?? "other";
-              const { data: newGoal, error: goalErr } = await createGoal(userId, {
-                name: d.name || "New Goal",
-                category,
-                target_amount: d.targetAmount ?? 0,
-                current_amount: 0,
-                monthly_contribution: d.monthlyContribution ?? 0,
-                target_date: d.deadline ?? null,
-              });
+                AI_GOAL_CATEGORY_MAP[d.category?.toLowerCase() ?? ""] ??
+                "other";
+              const { data: newGoal, error: goalErr } = await createGoal(
+                userId,
+                {
+                  name: d.name || "New Goal",
+                  category,
+                  target_amount: d.targetAmount ?? 0,
+                  current_amount: 0,
+                  monthly_contribution: d.monthlyContribution ?? 0,
+                  target_date: d.deadline ?? null,
+                },
+              );
               if (newGoal && onGoalCreated) onGoalCreated(newGoal);
               if (goalErr) console.error("Goal creation failed:", goalErr);
             } else {
@@ -212,9 +233,10 @@ export function ChatPageV2({ onNavigate, userId, onGoalCreated }: ChatPageV2Prop
           }
 
           if (action.type === "navigate" || action.type === "show_analysis") {
-            const page = action.type === "show_analysis"
-              ? "analysis"
-              : String(action.data.page || "");
+            const page =
+              action.type === "show_analysis"
+                ? "analysis"
+                : String(action.data.page || "");
             const tabId = PAGE_TO_TAB[page];
             if (tabId && onNavigate) {
               setTimeout(() => onNavigate(tabId), 600);
@@ -238,18 +260,28 @@ export function ChatPageV2({ onNavigate, userId, onGoalCreated }: ChatPageV2Prop
   const buildEnrichedQuery = useCallback(
     (text: string): string => {
       const lines: string[] = [text, "", "[AI CONTEXT — not from user]"];
-      lines.push(`Currency: ${currency.name} (${currency.symbol}, ${currency.code})`);
+      lines.push(
+        `Currency: ${currency.name} (${currency.symbol}, ${currency.code})`,
+      );
       if (profile.name) lines.push(`User name: ${profile.name}`);
       if (profile.monthlyIncome)
-        lines.push(`Monthly income: ${currency.symbol}${profile.monthlyIncome.toLocaleString()}`);
+        lines.push(
+          `Monthly income: ${currency.symbol}${profile.monthlyIncome.toLocaleString()}`,
+        );
       if (profile.monthlyExpenses)
-        lines.push(`Monthly expenses: ${currency.symbol}${profile.monthlyExpenses.toLocaleString()}`);
+        lines.push(
+          `Monthly expenses: ${currency.symbol}${profile.monthlyExpenses.toLocaleString()}`,
+        );
       if (profile.age) lines.push(`Age: ${profile.age}`);
       if (profile.occupation) lines.push(`Occupation: ${profile.occupation}`);
-      if (profile.goals?.length) lines.push(`Goals: ${profile.goals.join(", ")}`);
-      if (profile.riskTolerance) lines.push(`Risk tolerance: ${profile.riskTolerance}`);
+      if (profile.goals?.length)
+        lines.push(`Goals: ${profile.goals.join(", ")}`);
+      if (profile.riskTolerance)
+        lines.push(`Risk tolerance: ${profile.riskTolerance}`);
       if (!profile.profileComplete)
-        lines.push("Note: User profile not fully set up — gather their financial details naturally");
+        lines.push(
+          "Note: User profile not fully set up — gather their financial details naturally",
+        );
       // Include latest bank statement analysis summary if available
       const analysisSummary = getSummaryForAI(currency.symbol);
       if (analysisSummary) lines.push(analysisSummary);
@@ -269,7 +301,9 @@ export function ChatPageV2({ onNavigate, userId, onGoalCreated }: ChatPageV2Prop
         content: trimmed || "Uploaded a file",
         attachment: attachedFile
           ? {
-              type: attachedFile.file.type.startsWith("image/") ? "image" : "pdf",
+              type: attachedFile.file.type.startsWith("image/")
+                ? "image"
+                : "pdf",
               preview: attachedFile.preview,
               fileName: attachedFile.file.name,
               fileSize: attachedFile.file.size,
@@ -287,7 +321,9 @@ export function ChatPageV2({ onNavigate, userId, onGoalCreated }: ChatPageV2Prop
         setFileLoadingStage("extracting");
         try {
           const formData = new FormData();
-          const queryText = trimmed || "Please analyze this file and provide financial insights.";
+          const queryText =
+            trimmed ||
+            "Please analyze this file and provide financial insights.";
           formData.append("query", buildEnrichedQuery(queryText));
           formData.append("conversation_history", JSON.stringify(messages));
           formData.append("file", fileToSend.file);
@@ -296,8 +332,14 @@ export function ChatPageV2({ onNavigate, userId, onGoalCreated }: ChatPageV2Prop
 
           // Multi-stage loading hints
           const t1 = setTimeout(() => setFileLoadingStage("parsing"), 5000);
-          const t2 = setTimeout(() => setFileLoadingStage("categorizing"), 11000);
-          const extractionTimer = setTimeout(() => setFileLoadingStage("analyzing"), 17000);
+          const t2 = setTimeout(
+            () => setFileLoadingStage("categorizing"),
+            11000,
+          );
+          const extractionTimer = setTimeout(
+            () => setFileLoadingStage("analyzing"),
+            17000,
+          );
 
           const start = Date.now();
           const res = await fetch(`${BASE_URL}/api/agents/query-file`, {
@@ -319,15 +361,18 @@ export function ChatPageV2({ onNavigate, userId, onGoalCreated }: ChatPageV2Prop
 
           const elapsed = Date.now() - start;
           setCurrentResponse({ ...data, processing_time_ms: elapsed });
-          const lastMsg = data.conversation_history[data.conversation_history.length - 1];
+          const lastMsg =
+            data.conversation_history[data.conversation_history.length - 1];
           const updatedHistory: ChatMessage[] = [
             ...data.conversation_history.slice(0, -1),
             { ...lastMsg, actions: (data as any).actions },
           ];
           setMessages(updatedHistory);
-          if ((data as any).actions?.length) await executeActions((data as any).actions);
+          if ((data as any).actions?.length)
+            await executeActions((data as any).actions);
         } catch (err) {
-          const msg = err instanceof Error ? err.message : "File analysis failed";
+          const msg =
+            err instanceof Error ? err.message : "File analysis failed";
           setApiError(msg);
           setMessages((prev) => prev.slice(0, -1));
         } finally {
@@ -348,15 +393,19 @@ export function ChatPageV2({ onNavigate, userId, onGoalCreated }: ChatPageV2Prop
             } as Parameters<typeof queryAgent.mutate>[0]["data"],
           },
           {
-            onSuccess: async (data: AgentQueryResponse & { actions?: AppAction[] }) => {
+            onSuccess: async (
+              data: AgentQueryResponse & { actions?: AppAction[] },
+            ) => {
               setCurrentResponse(data);
-              const lastMsg = data.conversation_history[data.conversation_history.length - 1];
+              const lastMsg =
+                data.conversation_history[data.conversation_history.length - 1];
               const updatedHistory: ChatMessage[] = [
                 ...data.conversation_history.slice(0, -1),
                 { ...lastMsg, actions: (data as any).actions },
               ];
               setMessages(updatedHistory);
-              if ((data as any).actions?.length) await executeActions((data as any).actions);
+              if ((data as any).actions?.length)
+                await executeActions((data as any).actions);
             },
             onError: (err: any) => {
               const msg =
@@ -370,8 +419,15 @@ export function ChatPageV2({ onNavigate, userId, onGoalCreated }: ChatPageV2Prop
       }
     },
     [
-      input, attachedFile, messages, queryAgent, analyzeQuery,
-      currency, profile, buildEnrichedQuery, executeActions,
+      input,
+      attachedFile,
+      messages,
+      queryAgent,
+      analyzeQuery,
+      currency,
+      profile,
+      buildEnrichedQuery,
+      executeActions,
     ],
   );
 
@@ -385,7 +441,10 @@ export function ChatPageV2({ onNavigate, userId, onGoalCreated }: ChatPageV2Prop
           .filter((t) => t.type === "expense")
           .reduce((s, t) => s + t.amount, 0);
 
-        const monthLabel = new Date().toLocaleDateString("en-IN", { month: "long", year: "numeric" });
+        const monthLabel = new Date().toLocaleDateString("en-IN", {
+          month: "long",
+          year: "numeric",
+        });
         addAnalysis({
           period: monthLabel,
           totalIncome,
@@ -411,7 +470,10 @@ export function ChatPageV2({ onNavigate, userId, onGoalCreated }: ChatPageV2Prop
         }).catch(console.error);
 
         if (totalIncome > 0) {
-          updateProfile({ monthlyIncome: totalIncome, monthlyExpenses: totalExpenses });
+          updateProfile({
+            monthlyIncome: totalIncome,
+            monthlyExpenses: totalExpenses,
+          });
         }
       }
       handleSend(summary);
@@ -446,14 +508,17 @@ export function ChatPageV2({ onNavigate, userId, onGoalCreated }: ChatPageV2Prop
                 <div
                   className="w-16 h-16 rounded-2xl mx-auto mb-5 flex items-center justify-center"
                   style={{
-                    background: "linear-gradient(135deg, rgba(0,245,212,0.15), rgba(64,224,255,0.1))",
+                    background:
+                      "linear-gradient(135deg, rgba(0,245,212,0.15), rgba(64,224,255,0.1))",
                     border: "1px solid rgba(0,245,212,0.2)",
                   }}
                 >
                   <Sparkles className="w-8 h-8 text-primary" />
                 </div>
                 <h2 className="text-2xl font-semibold font-lora mb-2">
-                  {profile.name ? `Welcome back, ${profile.name}!` : "Hi, I'm FinAdvisor"}
+                  {profile.name
+                    ? `Welcome back, ${profile.name}!`
+                    : "Hi, I'm Pausa AI"}
                 </h2>
                 <p className="text-muted-foreground text-sm max-w-sm">
                   {profile.profileComplete
@@ -462,7 +527,10 @@ export function ChatPageV2({ onNavigate, userId, onGoalCreated }: ChatPageV2Prop
                 </p>
                 <div className="mt-3 flex items-center justify-center gap-2 text-xs text-muted-foreground">
                   <Zap className="w-3 h-3 text-primary" />
-                  <span>I can update your profile, create goals, and switch tabs — all through chat</span>
+                  <span>
+                    I can update your profile, create goals, and switch tabs —
+                    all through chat
+                  </span>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-2 w-full max-w-lg">
@@ -484,7 +552,8 @@ export function ChatPageV2({ onNavigate, userId, onGoalCreated }: ChatPageV2Prop
           )}
 
           {messages.map((msg, i) => {
-            const isLatestAssistant = msg.role === "assistant" && i === messages.length - 1;
+            const isLatestAssistant =
+              msg.role === "assistant" && i === messages.length - 1;
             return (
               <div
                 key={i}
@@ -496,41 +565,50 @@ export function ChatPageV2({ onNavigate, userId, onGoalCreated }: ChatPageV2Prop
                       <RichMessage
                         content={msg.content}
                         isLatest={isLatestAssistant}
-                        onConfirmAndAnalyze={isLatestAssistant ? handleConfirmAndAnalyze : undefined}
+                        onConfirmAndAnalyze={
+                          isLatestAssistant
+                            ? handleConfirmAndAnalyze
+                            : undefined
+                        }
                       />
                       {isLatestAssistant && currentResponse && (
                         <div className="mt-3 pt-3 border-t border-white/5 flex flex-wrap gap-1.5 text-xs">
-                          {(currentResponse.detected_domains as string[]).map((d) => (
-                            <span
-                              key={d}
-                              className="px-2 py-0.5 rounded-full text-primary bg-primary/10 border border-primary/15 font-medium"
-                            >
-                              {d}
-                            </span>
-                          ))}
+                          {(currentResponse.detected_domains as string[]).map(
+                            (d) => (
+                              <span
+                                key={d}
+                                className="px-2 py-0.5 rounded-full text-primary bg-primary/10 border border-primary/15 font-medium"
+                              >
+                                {d}
+                              </span>
+                            ),
+                          )}
                         </div>
                       )}
                     </div>
 
                     {/* Action chips — show what the AI did */}
-                    {(msg as ChatMessage).actions && (msg as ChatMessage).actions!.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 px-1">
-                        {(msg as ChatMessage).actions!.map((action, ai) => (
-                          <div
-                            key={ai}
-                            className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium"
-                            style={{
-                              background: "rgba(0,245,212,0.08)",
-                              border: "1px solid rgba(0,245,212,0.2)",
-                              color: "hsl(173 100% 65%)",
-                            }}
-                          >
-                            <CheckCircle2 className="w-3 h-3" />
-                            <span>{action.label || action.type.replace(/_/g, " ")}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                    {(msg as ChatMessage).actions &&
+                      (msg as ChatMessage).actions!.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 px-1">
+                          {(msg as ChatMessage).actions!.map((action, ai) => (
+                            <div
+                              key={ai}
+                              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium"
+                              style={{
+                                background: "rgba(0,245,212,0.08)",
+                                border: "1px solid rgba(0,245,212,0.2)",
+                                color: "hsl(173 100% 65%)",
+                              }}
+                            >
+                              <CheckCircle2 className="w-3 h-3" />
+                              <span>
+                                {action.label || action.type.replace(/_/g, " ")}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                   </div>
                 ) : (
                   <div className="max-w-[75%] flex flex-col items-end gap-1.5">
@@ -566,8 +644,15 @@ export function ChatPageV2({ onNavigate, userId, onGoalCreated }: ChatPageV2Prop
                               {(msg as ChatMessage).attachment!.fileName}
                             </p>
                             <p className="text-[11px] text-muted-foreground mt-0.5">
-                              {(msg as ChatMessage).attachment!.type === "pdf" ? "PDF" : "Image"} ·{" "}
-                              {(((msg as ChatMessage).attachment!.fileSize || 0) / 1024).toFixed(0)} KB
+                              {(msg as ChatMessage).attachment!.type === "pdf"
+                                ? "PDF"
+                                : "Image"}{" "}
+                              ·{" "}
+                              {(
+                                ((msg as ChatMessage).attachment!.fileSize ||
+                                  0) / 1024
+                              ).toFixed(0)}{" "}
+                              KB
                             </p>
                           </div>
                         </div>
@@ -576,7 +661,8 @@ export function ChatPageV2({ onNavigate, userId, onGoalCreated }: ChatPageV2Prop
                       <div
                         className="px-4 py-3 rounded-2xl rounded-br-sm text-sm leading-relaxed"
                         style={{
-                          background: "linear-gradient(135deg, rgba(0,245,212,0.18), rgba(64,224,255,0.12))",
+                          background:
+                            "linear-gradient(135deg, rgba(0,245,212,0.18), rgba(64,224,255,0.12))",
                           border: "1px solid rgba(0,245,212,0.25)",
                           color: "hsl(43 17% 93%)",
                         }}
@@ -596,16 +682,38 @@ export function ChatPageV2({ onNavigate, userId, onGoalCreated }: ChatPageV2Prop
               <div className="ai-card px-6 py-5 w-full">
                 {/* Stage progress bar */}
                 <div className="flex items-center gap-1.5 mb-4">
-                  {(["extracting", "parsing", "categorizing", "analyzing"] as const).map((s, idx) => {
-                    const stageOrder = { extracting: 0, parsing: 1, categorizing: 2, analyzing: 3 };
+                  {(
+                    [
+                      "extracting",
+                      "parsing",
+                      "categorizing",
+                      "analyzing",
+                    ] as const
+                  ).map((s, idx) => {
+                    const stageOrder = {
+                      extracting: 0,
+                      parsing: 1,
+                      categorizing: 2,
+                      analyzing: 3,
+                    };
                     const current = stageOrder[fileLoadingStage];
                     const done = idx < current;
                     const active = idx === current;
                     return (
                       <div key={s} className="flex-1 flex flex-col gap-1">
-                        <div className={`h-0.5 rounded-full transition-all duration-500 ${done ? "bg-primary" : active ? "bg-primary/50" : "bg-white/10"}`} />
-                        <span className={`text-[9px] font-mono uppercase truncate transition-colors ${active ? "text-primary" : done ? "text-primary/50" : "text-white/20"}`}>
-                          {s === "extracting" ? "Read" : s === "parsing" ? "Parse" : s === "categorizing" ? "Classify" : "Analyse"}
+                        <div
+                          className={`h-0.5 rounded-full transition-all duration-500 ${done ? "bg-primary" : active ? "bg-primary/50" : "bg-white/10"}`}
+                        />
+                        <span
+                          className={`text-[9px] font-mono uppercase truncate transition-colors ${active ? "text-primary" : done ? "text-primary/50" : "text-white/20"}`}
+                        >
+                          {s === "extracting"
+                            ? "Read"
+                            : s === "parsing"
+                              ? "Parse"
+                              : s === "categorizing"
+                                ? "Classify"
+                                : "Analyse"}
                         </span>
                       </div>
                     );
@@ -618,22 +726,34 @@ export function ChatPageV2({ onNavigate, userId, onGoalCreated }: ChatPageV2Prop
                   ) : (
                     <div className="flex gap-0.5 shrink-0 mt-1.5">
                       {[0, 1, 2].map((n) => (
-                        <div key={n} className="pulse-dot w-1.5 h-1.5 rounded-full bg-primary" style={{ animationDelay: `${n * 0.2}s` }} />
+                        <div
+                          key={n}
+                          className="pulse-dot w-1.5 h-1.5 rounded-full bg-primary"
+                          style={{ animationDelay: `${n * 0.2}s` }}
+                        />
                       ))}
                     </div>
                   )}
                   <div>
                     <p className="text-xs font-medium text-foreground">
-                      {fileLoadingStage === "extracting" && "Reading your document with Gemini AI vision…"}
-                      {fileLoadingStage === "parsing" && `Parsing transactions from extracted data…`}
-                      {fileLoadingStage === "categorizing" && `Categorizing${txCountHint ? ` ${txCountHint}` : ""} transactions…`}
-                      {fileLoadingStage === "analyzing" && "Generating personalized financial insights…"}
+                      {fileLoadingStage === "extracting" &&
+                        "Reading your document with Gemini AI vision…"}
+                      {fileLoadingStage === "parsing" &&
+                        `Parsing transactions from extracted data…`}
+                      {fileLoadingStage === "categorizing" &&
+                        `Categorizing${txCountHint ? ` ${txCountHint}` : ""} transactions…`}
+                      {fileLoadingStage === "analyzing" &&
+                        "Generating personalized financial insights…"}
                     </p>
                     <p className="text-[10px] text-muted-foreground mt-0.5">
-                      {fileLoadingStage === "extracting" && "Scanning every page for transaction rows"}
-                      {fileLoadingStage === "parsing" && "Identifying debits, credits, and dates"}
-                      {fileLoadingStage === "categorizing" && "Tagging Food, Transport, EMI, Investment…"}
-                      {fileLoadingStage === "analyzing" && "Applying India-specific financial analysis"}
+                      {fileLoadingStage === "extracting" &&
+                        "Scanning every page for transaction rows"}
+                      {fileLoadingStage === "parsing" &&
+                        "Identifying debits, credits, and dates"}
+                      {fileLoadingStage === "categorizing" &&
+                        "Tagging Food, Transport, EMI, Investment…"}
+                      {fileLoadingStage === "analyzing" &&
+                        "Applying India-specific financial analysis"}
                     </p>
                   </div>
                 </div>
@@ -696,7 +816,11 @@ export function ChatPageV2({ onNavigate, userId, onGoalCreated }: ChatPageV2Prop
           {attachedFile && (
             <div className="mb-2 flex items-center gap-2 px-3 py-2 rounded-xl border border-primary/20 bg-primary/6 w-fit">
               {attachedFile.preview ? (
-                <img src={attachedFile.preview} alt="" className="w-8 h-8 rounded object-cover" />
+                <img
+                  src={attachedFile.preview}
+                  alt=""
+                  className="w-8 h-8 rounded object-cover"
+                />
               ) : (
                 <div className="w-8 h-8 rounded bg-primary/10 flex items-center justify-center">
                   <FileText className="w-4 h-4 text-primary" />
@@ -708,11 +832,18 @@ export function ChatPageV2({ onNavigate, userId, onGoalCreated }: ChatPageV2Prop
                 </span>
                 <span className="text-xs text-muted-foreground">
                   {attachedFile.file.type.startsWith("image/") ? (
-                    <><ImageIcon className="w-2.5 h-2.5 inline mr-1" />Image</>
+                    <>
+                      <ImageIcon className="w-2.5 h-2.5 inline mr-1" />
+                      Image
+                    </>
                   ) : (
-                    <><FileText className="w-2.5 h-2.5 inline mr-1" />PDF</>
+                    <>
+                      <FileText className="w-2.5 h-2.5 inline mr-1" />
+                      PDF
+                    </>
                   )}
-                  {" · "}{(attachedFile.file.size / 1024).toFixed(0)} KB
+                  {" · "}
+                  {(attachedFile.file.size / 1024).toFixed(0)} KB
                 </span>
               </div>
               <button
@@ -775,7 +906,9 @@ export function ChatPageV2({ onNavigate, userId, onGoalCreated }: ChatPageV2Prop
                     ? "rgba(255,255,255,0.3)"
                     : "#0a0a0a",
               }}
-              disabled={(!input.trim() && !attachedFile) || isPending || isFileLoading}
+              disabled={
+                (!input.trim() && !attachedFile) || isPending || isFileLoading
+              }
               onClick={() => handleSend()}
               data-testid="button-send-message"
             >
@@ -785,7 +918,8 @@ export function ChatPageV2({ onNavigate, userId, onGoalCreated }: ChatPageV2Prop
 
           <p className="text-center text-[10px] text-muted-foreground mt-1.5">
             <Zap className="w-2.5 h-2.5 inline mr-1 text-primary" />
-            Upload a bank statement PDF — AI extracts every transaction automatically
+            Upload a bank statement PDF — AI extracts every transaction
+            automatically
           </p>
         </div>
       </div>
