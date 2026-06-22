@@ -19,6 +19,8 @@ import {
   CreditCard,
 } from "lucide-react";
 import { AppShell, type NavItem } from "@/components/layout/Appshell";
+import { CurrencyFloatingSelector } from "@/components/CurrencyFloatingSelector";
+import { WealthSuggestions } from "@/components/WealthSuggestions";
 import { RingProgress } from "@/components/dashboard/RingProgress";
 import { GoalCard } from "@/components/dashboard/GoalCard";
 import { FinancialAdvisor } from "@/components/dashboard/FinancialAdvisor";
@@ -707,6 +709,11 @@ function DashboardInner() {
       icon: <CreditCard className="w-4 h-4" />,
     },
     {
+      id: "wealth",
+      label: "Grow Wealth",
+      icon: <TrendingUp className="w-4 h-4" />,
+    },
+    {
       id: "tools",
       label: "Tools",
       icon: <ToolCase className="w-4 h-4" />,
@@ -826,6 +833,17 @@ function DashboardInner() {
             />
           )}
           {activeItem === "cards" && <CreditCardsPage />}
+          {activeItem === "wealth" && (
+            <div className="p-6 max-w-4xl mx-auto">
+              <div className="mb-6">
+                <h2 className="text-xl font-display font-bold mb-1">Grow Your Wealth</h2>
+                <p className="text-sm text-muted-foreground">
+                  Curated mutual fund recommendations with live AMFI NAV data. Start a SIP with as little as ₹100/month.
+                </p>
+              </div>
+              <WealthSuggestions />
+            </div>
+          )}
           {activeItem === "tools" && <ToolsPageV2 />}
           {activeItem === "analysis" && <AnalysisPage />}
           {activeItem === "profile" && <ProfilePage isInsideDashboard={true} />}
@@ -851,6 +869,7 @@ function DashboardInner() {
           onClose={() => setUpgradeToast(null)}
         />
       )}
+      <CurrencyFloatingSelector />
     </AppShell>
   );
 }

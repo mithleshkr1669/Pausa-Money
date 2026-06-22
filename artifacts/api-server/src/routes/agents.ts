@@ -92,6 +92,85 @@ Output ONLY the extracted content.`,
 }
 
 // ---------------------------------------------------------------------------
+// Server-side bank statement parser
+// ---------------------------------------------------------------------------
+
+function guessCategory(desc: string): string {
+  const d = desc.toLowerCase();
+  if (/swiggy|zomato|restaurant|food|cafe|dhaba|eat|grocery|blinkit|bigbasket|dunzo|instamart/.test(d)) return "Food";
+  if (/uber|ola|auto|metro|bus|petrol|diesel|fuel|toll|parking|rapido|cab/.test(d)) return "Transport";
+  if (/rent|apartment|housing|maintenance|society|flat|pg|hostel/.test(d)) return "Housing";
+  if (/netflix|amazon prime|hotstar|disney|spotify|cinema|movie|theatre/.test(d)) return "Entertainment";
+  if (/hospital|pharmacy|doctor|medical|health|clinic|apollo|fortis|medicine/.test(d)) return "Healthcare";
+  if (/amazon|flipkart|myntra|meesho|ajio|nykaa|shopping|mall|store/.test(d)) return "Shopping";
+  if (/electricity|water|mobile|broadband|internet|jio|airtel|vi|bsnl|bill|recharge/.test(d)) return "Utilities";
+  if (/emi|loan|repay|equated|mortgage/.test(d)) return "EMI/Loan";
+  if (/sip|mutual fund|invest|zerodha|groww|coin|ppf|elss|nps|demat/.test(d)) return "Investment";
+  if (/insurance|lic|term|health.*plan/.test(d)) return "Insurance";
+  return "Other";
+}
+
+interface ParsedTxRow {
+  date: string;
+  description: string;
+  debit: number;
+  credit: number;
+  category: string;
+}
+
+function parseTransactionRows(text: string): ParsedTxRow[] {
+  const rows: ParsedTxRow[] = [];
+  const lines = text.split("\n").filter((l) => l.includes("|"));
+  for (const line of lines) {
+    const parts = line.split("|").map((p) => p.trim());
+    if (parts.length < 4) continue;
+    const [date, desc, debitStr, creditStr] = parts;
+    const debit = parseFloat((debitStr ?? "0").replace(/[₹,\s]/g, "")) || 0;
+    const credit = parseFloat((creditStr ?? "0").replace(/[₹,\s]/g, "")) || 0;
+    if (debit === 0 && credit === 0) continue;
+    if (!desc?.trim()) continue;
+    rows.push({
+      date: (date ?? "").trim(),
+      description: desc.trim().slice(0, 80),
+      debit,
+      credit,
+      category: guessCategory(desc),
+    });
+  }
+  return rows;
+}
+
+function buildConfirmData(rows: ParsedTxRow[], period: string) {
+  const catMap: Record<string, number> = {};
+  const incomeItems: { desc: string; amount: number }[] = [];
+  let totalIncome = 0;
+  let totalExpenses = 0;
+  for (const row of rows) {
+    if (row.credit > 0 && row.debit === 0) {
+      incomeItems.push({ desc: row.description, amount: row.credit });
+      totalIncome += row.credit;
+    } else if (row.debit > 0) {
+      catMap[row.category] = (catMap[row.category] || 0) + row.debit;
+      totalExpenses += row.debit;
+    }
+  }
+  const expenseItems = Object.entries(catMap)
+    .sort(([, a], [, b]) => b - a)
+    .map(([cat, amount]) => ({
+      desc: `${cat} (${rows.filter((r) => r.category === cat && r.debit > 0).length} transactions)`,
+      amount: Math.round(amount * 100) / 100,
+      category: cat,
+    }));
+  return {
+    period,
+    totalIncome: Math.round(totalIncome * 100) / 100,
+    totalExpenses: Math.round(totalExpenses * 100) / 100,
+    incomeItems,
+    expenseItems,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Routes
 // ---------------------------------------------------------------------------
 
@@ -205,15 +284,41 @@ router.post(
         extractedText = buffer.toString("utf-8").slice(0, 14000);
       }
 
-      const enrichedQuery = `${query}\n\n[Extracted content from uploaded file]:\n${extractedText}`;
+      // Server-side bank statement parsing — avoids AI JSON truncation
+      const parsedRows = parseTransactionRows(extractedText);
+      const isBankStatement = parsedRows.length >= 3;
+      let parsedConfirmData: ReturnType<typeof buildConfirmData> | null = null;
+
+      if (isBankStatement) {
+        const monthMatch = extractedText.match(/(january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{4}/i);
+        const period = monthMatch
+          ? monthMatch[0].charAt(0).toUpperCase() + monthMatch[0].slice(1)
+          : new Date().toLocaleDateString("en-IN", { month: "long", year: "numeric" });
+        parsedConfirmData = buildConfirmData(parsedRows, period);
+        logger.info({ txCount: parsedRows.length, period, income: parsedConfirmData.totalIncome, expenses: parsedConfirmData.totalExpenses }, "Server-side bank statement parsing complete");
+      }
+
+      let enrichedQuery = `${query}\n\n[Extracted content from uploaded file]:\n${extractedText}`;
+      if (isBankStatement && parsedConfirmData) {
+        enrichedQuery += `\n\n[SYSTEM: ${parsedRows.length} transactions pre-parsed server-side. Categories: ${Object.entries(
+          parsedRows.reduce<Record<string, number>>((acc, r) => { if (r.debit > 0) acc[r.category] = (acc[r.category] || 0) + r.debit; return acc; }, {})
+        ).sort(([,a],[,b]) => b-a).slice(0,5).map(([k,v]) => `${k}=₹${Math.round(v)}`).join(", ")}. The :::confirm-transactions block is auto-generated — DO NOT output it yourself. Provide: 1) 1-line summary 2) Category insights 3) Savings opportunities 4) India-specific action steps (SIP/ELSS/UPI). Max 300 words.]`;
+      }
 
       const result = await runFinanceWorkflow(enrichedQuery, conversationHistory, undefined, userProfile, currency);
       const elapsed = Date.now() - start;
 
+      // Ensure confirm-transactions block is always present for bank statements
+      let finalResponse = result.response;
+      if (parsedConfirmData && !finalResponse.includes(":::confirm-transactions")) {
+        const block = `:::confirm-transactions\n${JSON.stringify(parsedConfirmData)}\n:::`;
+        finalResponse = block + "\n\n" + finalResponse;
+      }
+
       const updatedHistory = [
         ...conversationHistory,
         { role: "user", content: query },
-        { role: "assistant", content: result.response },
+        { role: "assistant", content: finalResponse },
       ];
 
       res.json({
@@ -221,12 +326,14 @@ router.post(
         agent_name: result.agentName,
         agent_id: result.agentId,
         detected_domains: result.detectedDomains,
-        response: result.response,
+        response: finalResponse,
         conversation_history: updatedHistory,
         skills_used: result.skillsUsed,
         tools_used: result.toolsUsed,
         actions: result.actions,
         processing_time_ms: elapsed,
+        extracted_transactions: isBankStatement ? parsedRows : undefined,
+        transaction_count: parsedRows.length,
       });
     } catch (err) {
       req.log.error({ err }, "Agent file query failed");

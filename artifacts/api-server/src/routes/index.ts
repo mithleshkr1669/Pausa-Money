@@ -9,6 +9,7 @@ import goalsRouter from "./goals.js";
 import rewardsRouter from "./rewards.js";
 import leadsRouter from "./leads.js";
 import insuranceRouter from "./insurance.js";
+import amfiRouter from "./amfi.js";
 
 const router: IRouter = Router();
 
@@ -22,5 +23,6 @@ router.use(goalsRouter);
 router.use(rewardsRouter);
 router.use(leadsRouter);
 router.use(insuranceRouter);
+router.use(amfiRouter);
 
 export default router;

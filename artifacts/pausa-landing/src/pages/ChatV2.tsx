@@ -123,7 +123,8 @@ export function ChatPageV2({ onNavigate, userId, onGoalCreated }: ChatPageV2Prop
   const [apiError, setApiError] = useState<string | null>(null);
   const [attachedFile, setAttachedFile] = useState<AttachedFile | null>(null);
   const [isFileLoading, setIsFileLoading] = useState(false);
-  const [fileLoadingStage, setFileLoadingStage] = useState<"extracting" | "analyzing">("extracting");
+  const [fileLoadingStage, setFileLoadingStage] = useState<"extracting" | "parsing" | "categorizing" | "analyzing">("extracting");
+  const [txCountHint, setTxCountHint] = useState<number | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -293,20 +294,26 @@ export function ChatPageV2({ onNavigate, userId, onGoalCreated }: ChatPageV2Prop
           formData.append("user_profile", JSON.stringify(profile));
           formData.append("currency", JSON.stringify(currency));
 
-          // Simulate extraction phase (Gemini processes the file), then switch to analyzing
-          const extractionTimer = setTimeout(() => setFileLoadingStage("analyzing"), 8000);
+          // Multi-stage loading hints
+          const t1 = setTimeout(() => setFileLoadingStage("parsing"), 5000);
+          const t2 = setTimeout(() => setFileLoadingStage("categorizing"), 11000);
+          const extractionTimer = setTimeout(() => setFileLoadingStage("analyzing"), 17000);
 
           const start = Date.now();
           const res = await fetch(`${BASE_URL}/api/agents/query-file`, {
             method: "POST",
             body: formData,
           });
+          clearTimeout(t1);
+          clearTimeout(t2);
           clearTimeout(extractionTimer);
 
           const data = (await res.json()) as AgentQueryResponse & {
             error?: string;
             actions?: AppAction[];
+            transaction_count?: number;
           };
+          if (data.transaction_count) setTxCountHint(data.transaction_count);
 
           if (!res.ok) throw new Error(data.error || "File analysis failed");
 
@@ -326,6 +333,7 @@ export function ChatPageV2({ onNavigate, userId, onGoalCreated }: ChatPageV2Prop
         } finally {
           setIsFileLoading(false);
           setFileLoadingStage("extracting");
+          setTxCountHint(null);
         }
         return;
       }
@@ -582,34 +590,50 @@ export function ChatPageV2({ onNavigate, userId, onGoalCreated }: ChatPageV2Prop
             );
           })}
 
-          {/* File loading state — with two stages */}
+          {/* File loading state — 4 staged hints */}
           {isFileLoading && (
             <div className="flex justify-start message-in">
               <div className="ai-card px-6 py-5 w-full">
-                <div className="flex items-center gap-3 mb-3">
+                {/* Stage progress bar */}
+                <div className="flex items-center gap-1.5 mb-4">
+                  {(["extracting", "parsing", "categorizing", "analyzing"] as const).map((s, idx) => {
+                    const stageOrder = { extracting: 0, parsing: 1, categorizing: 2, analyzing: 3 };
+                    const current = stageOrder[fileLoadingStage];
+                    const done = idx < current;
+                    const active = idx === current;
+                    return (
+                      <div key={s} className="flex-1 flex flex-col gap-1">
+                        <div className={`h-0.5 rounded-full transition-all duration-500 ${done ? "bg-primary" : active ? "bg-primary/50" : "bg-white/10"}`} />
+                        <span className={`text-[9px] font-mono uppercase truncate transition-colors ${active ? "text-primary" : done ? "text-primary/50" : "text-white/20"}`}>
+                          {s === "extracting" ? "Read" : s === "parsing" ? "Parse" : s === "categorizing" ? "Classify" : "Analyse"}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="flex items-start gap-3 mb-3">
                   {fileLoadingStage === "extracting" ? (
-                    <ScanText className="w-4 h-4 text-primary animate-pulse shrink-0" />
+                    <ScanText className="w-4 h-4 text-primary animate-pulse shrink-0 mt-0.5" />
                   ) : (
-                    <div className="flex gap-1">
+                    <div className="flex gap-0.5 shrink-0 mt-1.5">
                       {[0, 1, 2].map((n) => (
-                        <div
-                          key={n}
-                          className="pulse-dot w-2 h-2 rounded-full bg-primary"
-                          style={{ animationDelay: `${n * 0.2}s` }}
-                        />
+                        <div key={n} className="pulse-dot w-1.5 h-1.5 rounded-full bg-primary" style={{ animationDelay: `${n * 0.2}s` }} />
                       ))}
                     </div>
                   )}
                   <div>
                     <p className="text-xs font-medium text-foreground">
-                      {fileLoadingStage === "extracting"
-                        ? "Extracting transactions with AI vision..."
-                        : "Analyzing your finances..."}
+                      {fileLoadingStage === "extracting" && "Reading your document with Gemini AI vision…"}
+                      {fileLoadingStage === "parsing" && `Parsing transactions from extracted data…`}
+                      {fileLoadingStage === "categorizing" && `Categorizing${txCountHint ? ` ${txCountHint}` : ""} transactions…`}
+                      {fileLoadingStage === "analyzing" && "Generating personalized financial insights…"}
                     </p>
                     <p className="text-[10px] text-muted-foreground mt-0.5">
-                      {fileLoadingStage === "extracting"
-                        ? "Gemini is reading every transaction in your document"
-                        : "Running your personalized financial analysis"}
+                      {fileLoadingStage === "extracting" && "Scanning every page for transaction rows"}
+                      {fileLoadingStage === "parsing" && "Identifying debits, credits, and dates"}
+                      {fileLoadingStage === "categorizing" && "Tagging Food, Transport, EMI, Investment…"}
+                      {fileLoadingStage === "analyzing" && "Applying India-specific financial analysis"}
                     </p>
                   </div>
                 </div>

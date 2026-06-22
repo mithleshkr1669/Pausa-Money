@@ -1,6 +1,18 @@
 import { useState, useEffect, useRef } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence, useInView } from "framer-motion";
+import { useUser } from "@clerk/clerk-react";
+import { isClerkConfigured } from "@/lib/clerk-config";
+import { PausaLogo } from "@/components/PausaLogo";
+
+function AuthRedirectInner() {
+  const { isSignedIn } = useUser();
+  const [, navigate] = useLocation();
+  useEffect(() => {
+    if (isSignedIn) navigate("/dashboard");
+  }, [isSignedIn, navigate]);
+  return null;
+}
 
 type Lang = "en" | "hi";
 
@@ -61,11 +73,7 @@ function HomeNav({
     >
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2.5 shrink-0">
-          <img
-            src="/image.png"
-            alt="Pausa"
-            className="w-15 h-15 rounded-xl object-cover"
-          />
+          <PausaLogo size={36} />
           <span
             className="font-lora font-bold text-lg sm:text-xl tracking-tight"
             style={{ color: CY }}
@@ -1335,6 +1343,7 @@ export default function Home() {
   const bottomRef = useRef<HTMLDivElement>(null);
   return (
     <div className="font-jakarta bg-[#09090f] min-h-screen">
+      {isClerkConfigured && <AuthRedirectInner />}
       <HomeNav lang={lang} setLang={setLang} />
       <Hero />
       <StatsBar />
